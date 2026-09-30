@@ -1,0 +1,6 @@
+$kind: http-request
+name: http://localhost:8080/denuncias/SF-2026-999999
+description: ""
+url: http://localhost:8080/denuncias/SF-2026-999999
+method: GET
+order: 1790783458565
