@@ -1,0 +1,21 @@
+$kind: http-request
+name: http://localhost:8080/denuncias
+description: ""
+url: http://localhost:8080/denuncias
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"patente\": \"ABCD12\",\r
+
+    \  \"rutAsegurado\": \"12345678-9\",\r
+
+    \  \"numeroPoliza\": \"POL-001\",\r
+
+    \  \"fechaSiniestro\": \"2026-09-28\",\r
+
+    \  \"descripcion\": \"choque por alcance en semaforo\"\r
+
+    }"
+order: 3080680789675921
