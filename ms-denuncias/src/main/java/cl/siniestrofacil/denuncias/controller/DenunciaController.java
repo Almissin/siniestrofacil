@@ -1,6 +1,7 @@
 package cl.siniestrofacil.denuncias.controller;
 
 import cl.siniestrofacil.denuncias.dto.DenunciaRequest;
+import cl.siniestrofacil.denuncias.exception.DenunciaNoEncontradaException;
 import cl.siniestrofacil.denuncias.model.Denuncia;
 import cl.siniestrofacil.denuncias.service.DenunciaService;
 import jakarta.validation.Valid;
@@ -30,11 +31,11 @@ public class DenunciaController {
         // pedir al servicio la denuncia con ese folio
         var resultado = denunciaService.buscarPorFolio(folio);
 
-        // responder 200 si existe y 404 si no existe
+        // responder 200 si existe y 404 con mensaje si no existe
         if (resultado.isPresent()) {
             return ResponseEntity.ok(resultado.get());
         } else {
-            return ResponseEntity.notFound().build();
+            throw new DenunciaNoEncontradaException(folio);
         }
     }
 }

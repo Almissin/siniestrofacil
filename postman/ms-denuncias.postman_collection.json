@@ -1,0 +1,578 @@
+{
+  "info": {
+    "name": "ms-denuncias - pruebas",
+    "description": "Pruebas automatizadas del microservicio ms-denuncias (registrar y consultar denuncias). Ejecutar completa con el Collection Runner, en orden: la consulta por folio usa el folio que guarda el primer POST.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "folio",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Registrar denuncia (casos validos)",
+      "item": [
+        {
+          "name": "Registrar denuncia con patente nueva (ABCD12)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201 Created', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('genera folio con formato SF-AAAA-NNNNNN', () => {",
+                  "    pm.expect(body.folio).to.match(/^SF-\\d{4}-\\d{6}$/);",
+                  "});",
+                  "",
+                  "pm.test('el folio usa el anio actual', () => {",
+                  "    pm.expect(body.folio).to.include('SF-' + new Date().getFullYear() + '-');",
+                  "});",
+                  "",
+                  "pm.test('deja la denuncia en estado RECIBIDA', () => {",
+                  "    pm.expect(body.estado).to.eql('RECIBIDA');",
+                  "});",
+                  "",
+                  "pm.test('devuelve los datos enviados', () => {",
+                  "    pm.expect(body.patente).to.eql('ABCD12');",
+                  "    pm.expect(body.rutAsegurado).to.eql('12345678-9');",
+                  "    pm.expect(body.numeroPoliza).to.eql('POL-001');",
+                  "    pm.expect(body.fechaSiniestro).to.eql('2026-09-28');",
+                  "    pm.expect(body.descripcion).to.eql('choque por alcance en semaforo');",
+                  "});",
+                  "",
+                  "pm.test('incluye fecha de registro', () => {",
+                  "    pm.expect(body.fechaRegistro).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "// guardar folio para la consulta posterior",
+                  "pm.collectionVariables.set('folio', body.folio);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"rutAsegurado\": \"12345678-9\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque por alcance en semaforo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          }
+        },
+        {
+          "name": "Registrar denuncia con patente antigua (AB1234)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201 Created', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('acepta formato de patente antiguo', () => {",
+                  "    pm.expect(pm.response.json().patente).to.eql('AB1234');",
+                  "});",
+                  "",
+                  "pm.test('genera un folio distinto al anterior', () => {",
+                  "    pm.expect(pm.response.json().folio).to.not.eql(pm.collectionVariables.get('folio'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"AB1234\",\n  \"rutAsegurado\": \"11111111-1\",\n  \"numeroPoliza\": \"POL-002\",\n  \"fechaSiniestro\": \"2026-09-15\",\n  \"descripcion\": \"rayadura en estacionamiento\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          }
+        },
+        {
+          "name": "Registrar denuncia con fecha de hoy",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// calcular fecha local de hoy en formato AAAA-MM-DD",
+                  "const hoy = new Date();",
+                  "const fecha = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');",
+                  "pm.variables.set('fechaHoy', fecha);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201 Created (hoy no es fecha futura)', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('guarda la fecha de hoy', () => {",
+                  "    pm.expect(pm.response.json().fechaSiniestro).to.eql(pm.variables.get('fechaHoy'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"WXYZ99\",\n  \"rutAsegurado\": \"22222222-2\",\n  \"numeroPoliza\": \"POL-003\",\n  \"fechaSiniestro\": \"{{fechaHoy}}\",\n  \"descripcion\": \"choque en interseccion\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Consultar denuncia por folio",
+      "item": [
+        {
+          "name": "Consultar folio existente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('devuelve la denuncia del folio consultado', () => {",
+                  "    pm.expect(body.folio).to.eql(pm.collectionVariables.get('folio'));",
+                  "});",
+                  "",
+                  "pm.test('mantiene los datos registrados', () => {",
+                  "    pm.expect(body.patente).to.eql('ABCD12');",
+                  "    pm.expect(body.estado).to.eql('RECIBIDA');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/denuncias/{{folio}}"
+          }
+        },
+        {
+          "name": "Consultar folio inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404 Not Found', () => pm.response.to.have.status(404));",
+                  "",
+                  "pm.test('informa que el folio no existe', () => {",
+                  "    pm.expect(pm.response.json().mensaje).to.eql('no existe una denuncia con folio SF-2026-999999');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/denuncias/SF-2026-999999"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Validaciones (400 Bad Request)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// todas las peticiones de esta carpeta deben ser rechazadas",
+              "pm.test('responde 400 Bad Request', () => pm.response.to.have.status(400));",
+              "",
+              "pm.test('devuelve mensaje de error', () => {",
+              "    pm.expect(pm.response.json().mensaje).to.be.a('string').and.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Patente con formato invalido (ABC123)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABC123\",\n  \"rutAsegurado\": \"12345678-9\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque por alcance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('informa error en patente: formato de patente invalido', () => {",
+                  "    pm.expect(body.errores.patente).to.include('formato de patente invalido');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patente en minusculas (abcd12)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"abcd12\",\n  \"rutAsegurado\": \"12345678-9\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque por alcance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('informa error en patente: formato de patente invalido', () => {",
+                  "    pm.expect(body.errores.patente).to.include('formato de patente invalido');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fecha de siniestro futura",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"rutAsegurado\": \"12345678-9\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2099-01-01\",\n  \"descripcion\": \"choque por alcance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('informa error en fechaSiniestro: la fecha del siniestro no puede ser futura', () => {",
+                  "    pm.expect(body.errores.fechaSiniestro).to.include('la fecha del siniestro no puede ser futura');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fecha con formato invalido (28-09-2026)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"rutAsegurado\": \"12345678-9\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"28-09-2026\",\n  \"descripcion\": \"choque por alcance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('mensaje: el campo fechaSiniestro tiene un formato invalido', () => pm.expect(body.mensaje).to.eql('el campo fechaSiniestro tiene un formato invalido'));",
+                  "pm.test('informa error en fechaSiniestro', () => pm.expect(body.errores.fechaSiniestro).to.eql('la fecha debe tener formato AAAA-MM-DD'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Descripcion de mas de 500 caracteres",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('descripcionLarga', 'a'.repeat(501));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('informa error en descripcion: la descripcion no puede superar 500 caracteres', () => {",
+                  "    pm.expect(body.errores.descripcion).to.include('la descripcion no puede superar 500 caracteres');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"rutAsegurado\": \"12345678-9\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"{{descripcionLarga}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          }
+        },
+        {
+          "name": "Campos obligatorios en blanco",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"\",\n  \"rutAsegurado\": \"  \",\n  \"numeroPoliza\": \"\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('informa error en patente: la patente es obligatoria', () => {",
+                  "    pm.expect(body.errores.patente).to.include('la patente es obligatoria');",
+                  "});",
+                  "pm.test('informa error en rutAsegurado: el rut del asegurado es obligatorio', () => {",
+                  "    pm.expect(body.errores.rutAsegurado).to.include('el rut del asegurado es obligatorio');",
+                  "});",
+                  "pm.test('informa error en numeroPoliza: el numero de poliza es obligatorio', () => {",
+                  "    pm.expect(body.errores.numeroPoliza).to.include('el numero de poliza es obligatorio');",
+                  "});",
+                  "pm.test('informa error en descripcion: la descripcion es obligatoria', () => {",
+                  "    pm.expect(body.errores.descripcion).to.include('la descripcion es obligatoria');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Body vacio ({})",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('informa error en patente: la patente es obligatoria', () => {",
+                  "    pm.expect(body.errores.patente).to.include('la patente es obligatoria');",
+                  "});",
+                  "pm.test('informa error en rutAsegurado: el rut del asegurado es obligatorio', () => {",
+                  "    pm.expect(body.errores.rutAsegurado).to.include('el rut del asegurado es obligatorio');",
+                  "});",
+                  "pm.test('informa error en numeroPoliza: el numero de poliza es obligatorio', () => {",
+                  "    pm.expect(body.errores.numeroPoliza).to.include('el numero de poliza es obligatorio');",
+                  "});",
+                  "pm.test('informa error en fechaSiniestro: la fecha del siniestro es obligatoria', () => {",
+                  "    pm.expect(body.errores.fechaSiniestro).to.include('la fecha del siniestro es obligatoria');",
+                  "});",
+                  "pm.test('informa error en descripcion: la descripcion es obligatoria', () => {",
+                  "    pm.expect(body.errores.descripcion).to.include('la descripcion es obligatoria');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "JSON mal formado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"rutAsegurado\": ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/denuncias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('mensaje: el cuerpo de la peticion no es un json valido', () => pm.expect(body.mensaje).to.eql('el cuerpo de la peticion no es un json valido'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

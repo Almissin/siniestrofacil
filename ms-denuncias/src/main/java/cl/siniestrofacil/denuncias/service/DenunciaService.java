@@ -2,6 +2,7 @@ package cl.siniestrofacil.denuncias.service;
 
 import cl.siniestrofacil.denuncias.dto.DenunciaRequest;
 import cl.siniestrofacil.denuncias.model.Denuncia;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+@Slf4j
 @Service
 public class DenunciaService {
 
@@ -38,6 +40,8 @@ public class DenunciaService {
         denuncia.setFechaRegistro(LocalDateTime.now());
 
         denuncias.put(denuncia.getFolio(), denuncia);
+        log.info("denuncia registrada folio={} patente={} poliza={}",
+                denuncia.getFolio(), denuncia.getPatente(), denuncia.getNumeroPoliza());
         return denuncia;
     }
 
