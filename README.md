@@ -120,40 +120,48 @@ Cualquier error → GlobalExceptionHandler → ErrorResponse (JSON uniforme)
 
 ### Paso 1 — Instalar el JDK 25
 
-1. Descarga un JDK 25 (por ejemplo **Microsoft Build of OpenJDK 25** o **Eclipse Temurin 25**).
-2. Instálalo y configura la variable de entorno `JAVA_HOME` apuntando a la carpeta del JDK.
-3. Agrega `%JAVA_HOME%\bin` (Windows) o `$JAVA_HOME/bin` (Linux/Mac) al `PATH`.
-4. Verifica en una terminal nueva:
+**Windows:**
 
-```bash
+1. Descarga el instalador `.msi` de un JDK 25 (por ejemplo **Microsoft Build of OpenJDK 25** o **Eclipse Temurin 25**).
+2. Ejecuta el instalador. Si ofrece las opciones **"Set JAVA_HOME variable"** y **"Add to PATH"**, márcalas y listo (salta al punto 5).
+3. Si no las ofrece, configúralas a mano:
+   - Presiona `Win` y busca **"Editar las variables de entorno del sistema"** → botón **Variables de entorno**.
+   - En *Variables del sistema* → **Nueva** → Nombre: `JAVA_HOME`, Valor: la carpeta del JDK (ej. `C:\Program Files\Microsoft\jdk-25.0.2-hotspot`).
+   - Selecciona la variable `Path` → **Editar** → **Nuevo** → escribe `%JAVA_HOME%\bin` → **Aceptar** en todas las ventanas.
+4. **Cierra y vuelve a abrir** la terminal (PowerShell o la terminal de VS Code) para que tome los cambios.
+5. Verifica:
+
+```powershell
 java -version
 # Debe mostrar: openjdk version "25..."
+
+echo $env:JAVA_HOME
+# Debe mostrar la carpeta del JDK
 ```
+
+<details>
+<summary><b>Linux / Mac</b></summary>
+
+Instala el JDK 25 con tu gestor de paquetes o SDKMAN, configura `JAVA_HOME` en `~/.bashrc` o `~/.zshrc` y verifica con `java -version`.
+
+</details>
 
 ### Paso 2 — Clonar el repositorio
 
-```bash
+Abre **PowerShell** (o la terminal integrada de VS Code con `` Ctrl+` ``):
+
+```powershell
 git clone https://github.com/<usuario>/<repositorio>.git
-cd <repositorio>/ms-denuncias
+cd <repositorio>\ms-denuncias
 ```
 
-### Paso 3 — Dar permisos al wrapper (solo Linux / Mac)
+### Paso 3 — Compilar y descargar dependencias
 
-```bash
-chmod +x mvnw
-```
-
-### Paso 4 — Compilar y descargar dependencias
-
-**Windows (PowerShell / CMD):**
 ```powershell
 .\mvnw.cmd clean install
 ```
 
-**Linux / Mac:**
-```bash
-./mvnw clean install
-```
+> La primera vez tarda un poco porque descarga Maven y todas las dependencias.
 
 Si todo está bien, verás al final:
 
@@ -161,7 +169,17 @@ Si todo está bien, verás al final:
 [INFO] BUILD SUCCESS
 ```
 
-### Paso 5 — Configurar Lombok en el IDE
+<details>
+<summary><b>Linux / Mac</b></summary>
+
+```bash
+chmod +x mvnw      # solo la primera vez, da permiso de ejecución
+./mvnw clean install
+```
+
+</details>
+
+### Paso 4 — Configurar Lombok en el IDE
 
 Lombok genera código al compilar; el IDE necesita saberlo para no marcar errores falsos.
 
@@ -174,13 +192,11 @@ Lombok genera código al compilar; el IDE necesita saberlo para no marcar errore
 
 **Opción A — Terminal**
 
-```bash
-# Windows
+```powershell
 .\mvnw.cmd spring-boot:run
-
-# Linux / Mac
-./mvnw spring-boot:run
 ```
+
+Para detenerlo: `Ctrl + C` en la terminal (si pregunta *"¿Desea terminar el trabajo por lotes (S/N)?"*, responde `S`).
 
 **Opción B — Desde el IDE**
 
@@ -188,10 +204,22 @@ Abrir `MsDenunciasApplication.java` y presionar **Run** ▶️.
 
 **Opción C — Ejecutar el JAR generado**
 
+```powershell
+.\mvnw.cmd clean package
+java -jar target\ms-denuncias-0.0.1-SNAPSHOT.jar
+```
+
+<details>
+<summary><b>Linux / Mac</b></summary>
+
 ```bash
+./mvnw spring-boot:run
+# o bien
 ./mvnw clean package
 java -jar target/ms-denuncias-0.0.1-SNAPSHOT.jar
 ```
+
+</details>
 
 ### Verificar que está arriba
 
@@ -251,18 +279,40 @@ URL base: `http://localhost:8081`
 }
 ```
 
-**Con cURL:**
+**Desde PowerShell (Windows):**
+```powershell
+$body = @{
+    patente        = "ABCD12"
+    rutAsegurado   = "12345678-9"
+    numeroPoliza   = "POL-001"
+    fechaSiniestro = "2026-09-28"
+    descripcion    = "choque por alcance en semaforo"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8081/denuncias" `
+    -ContentType "application/json" -Body $body
+```
+
+<details>
+<summary><b>Con cURL (Linux / Mac / Git Bash)</b></summary>
+
 ```bash
 curl -X POST http://localhost:8081/denuncias \
   -H "Content-Type: application/json" \
   -d '{"patente":"ABCD12","rutAsegurado":"12345678-9","numeroPoliza":"POL-001","fechaSiniestro":"2026-09-28","descripcion":"choque por alcance en semaforo"}'
 ```
 
+</details>
+
+> En Windows es más cómodo probar con **Postman** o **Swagger** (ver más abajo).
+
 ### 2. Consultar por folio — `GET /denuncias/{folio}`
 
-```bash
-curl http://localhost:8081/denuncias/SF-2026-000001
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8081/denuncias/SF-2026-000001"
 ```
+
+También puedes abrir esa URL directamente en el navegador.
 
 - `200 OK` → devuelve la denuncia completa.
 - `404 Not Found` → el folio no existe (ver [Manejo de errores](#-manejo-de-errores)).
@@ -466,10 +516,17 @@ La colección trae sus propias variables (pestaña **Variables** de la colecció
 
 ### (Opcional) Ejecutar por terminal con Newman
 
-```bash
+Requiere [Node.js](https://nodejs.org/) instalado. Desde la raíz del repositorio, en PowerShell:
+
+```powershell
 npm install -g newman
-newman run postman/ms-denuncias.postman_collection.json
+newman run postman\ms-denuncias.postman_collection.json
 ```
+
+> Si PowerShell muestra *"la ejecución de scripts está deshabilitada en este sistema"*, ejecuta una sola vez:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+> ```
 
 > ⚠️ Las denuncias se guardan **en memoria**: si reinicias el microservicio, se borran y el correlativo del folio vuelve a `000001`.
 
@@ -481,13 +538,11 @@ newman run postman/ms-denuncias.postman_collection.json
 
 El proyecto incluye una prueba que verifica que el contexto de Spring levanta correctamente.
 
-```bash
-# Windows
+```powershell
 .\mvnw.cmd test
-
-# Linux / Mac
-./mvnw test
 ```
+
+*(Linux / Mac: `./mvnw test`)*
 
 Resultado esperado:
 
@@ -498,8 +553,8 @@ Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
 
 Para una verificación completa (compilar + probar + empaquetar):
 
-```bash
-./mvnw clean verify
+```powershell
+.\mvnw.cmd clean verify
 ```
 
 ---
@@ -544,9 +599,11 @@ Usa esta lista para revisar el proyecto antes de una entrega o un *pull request*
 
 | Problema | Causa probable | Solución |
 |---|---|---|
-| `release version 25 not supported` | El JDK activo no es el 25 | Instalar JDK 25 y revisar `JAVA_HOME` |
-| `Port 8081 was already in use` | Otro proceso usa el puerto | Cerrar ese proceso o cambiar `server.port` en `application.properties` |
-| `./mvnw: Permission denied` | Falta permiso de ejecución | `chmod +x mvnw` |
+| `release version 25 not supported` | El JDK activo no es el 25 | Instalar JDK 25, revisar `JAVA_HOME` y **reabrir la terminal** |
+| `'java' no se reconoce como un comando...` | Falta `%JAVA_HOME%\bin` en el `Path` | Revisar el [Paso 1](#paso-1--instalar-el-jdk-25) y reabrir la terminal |
+| `mvnw.cmd : El término no se reconoce...` | En PowerShell falta el `.\` o no estás en la carpeta | Entrar a `ms-denuncias` y usar `.\mvnw.cmd` |
+| `Port 8081 was already in use` | Otro proceso (o una ejecución anterior) usa el puerto | En PowerShell: `netstat -ano \| findstr :8081` → anotar el PID → `taskkill /PID <PID> /F` |
+| `./mvnw: Permission denied` (Linux/Mac) | Falta permiso de ejecución | `chmod +x mvnw` |
 | Errores rojos en `getFolio()`, `setPatente()`, etc. | El IDE no procesa Lombok | Habilitar *annotation processing* / limpiar workspace de Java |
 | Swagger da `404` | El servicio no levantó o la URL está mal | Revisar consola y usar `/swagger-ui/index.html` |
 | Postman: `Could not get response` | Servicio apagado o puerto incorrecto | Levantar el servicio y revisar que `baseUrl` sea `http://localhost:8081` |
