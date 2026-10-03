@@ -1,5 +1,6 @@
 package cl.siniestrofacil.denuncias.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import cl.siniestrofacil.denuncias.dto.DenunciaRequest;
 import cl.siniestrofacil.denuncias.model.Denuncia;
 import cl.siniestrofacil.denuncias.service.DenunciaService;
@@ -13,10 +14,10 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/denuncias")
 @RequiredArgsConstructor
 public class DenunciaController {
-
     private final DenunciaService denunciaService;
 
     // registrar denuncia y responder folio inmediato
+    @Operation(summary = "registrar una denuncia y entregar folio inmediato")
     @PostMapping
     public ResponseEntity<Denuncia> registrar(@Valid @RequestBody DenunciaRequest request) {
         Denuncia denuncia = denunciaService.registrar(request);
@@ -24,6 +25,7 @@ public class DenunciaController {
     }
 
     // buscar y mostrar detalles por folio
+    @Operation(summary = "muestra el detalle de una denuncia por su folio")
     @GetMapping("/{folio}")
     public ResponseEntity<Denuncia> buscarPorFolio(@PathVariable String folio) {
 
