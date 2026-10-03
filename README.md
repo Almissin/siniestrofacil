@@ -28,7 +28,8 @@ Microservicio REST para **registrar y consultar denuncias de siniestros vehicula
 12. [Checklist de revisión](#-checklist-de-revisión)
 13. [Solución de problemas](#-solución-de-problemas)
 14. [Limitaciones y próximos pasos](#-limitaciones-y-próximos-pasos)
-15. [Equipo](#-equipo)
+15. [Evidencias](#-evidencias)
+16. [Equipo](#-equipo)
 
 ---
 
@@ -75,8 +76,10 @@ siniestrofacil/
 │       │       └── application.properties           # Puerto 8081 + Swagger en la raíz
 │       └── test/java/cl/siniestrofacil/denuncias/
 │           └── MsDenunciasApplicationTests.java
-└── postman/
-    └── ms-denuncias.postman_collection.json         # Colección de pruebas automatizadas
+├── postman/
+│   └── ms-denuncias.postman_collection.json         # Colección de pruebas automatizadas
+└── docs/
+    └── capturas/                                    # Evidencias de Swagger y Postman
 ```
 
 ### Arquitectura en capas
@@ -582,6 +585,56 @@ Usa esta lista para revisar el proyecto antes de una entrega o un *pull request*
 - [ ] Anotaciones `@Operation` / `@Schema` para enriquecer Swagger
 - [ ] Pruebas unitarias del servicio y pruebas de controlador con MockMvc
 - [ ] Contenerización con Docker y despliegue en la nube (AWS)
+
+---
+
+## 📸 Evidencias
+
+Capturas de las pruebas realizadas con el microservicio corriendo en `http://localhost:8081`.
+
+### Swagger
+
+**1. Swagger UI con los endpoints disponibles**
+
+![Swagger UI](docs/capturas/01-swagger-inicio.png)
+
+**2. Registrar denuncia — `POST /denuncias` → 201 Created**
+
+![Swagger POST 201](docs/capturas/02-swagger-post-201.png)
+
+**3. Consultar denuncia por folio — `GET /denuncias/{folio}` → 200 OK**
+
+![Swagger GET 200](docs/capturas/03-swagger-get-200.png)
+
+**4. Validación — datos inválidos → 400 Bad Request**
+
+![Swagger POST 400](docs/capturas/04-swagger-post-400.png)
+
+**5. Folio inexistente → 404 Not Found**
+
+![Swagger GET 404](docs/capturas/05-swagger-get-404.png)
+
+### Postman
+
+**6. Colección importada**
+
+![Postman colección](docs/capturas/06-postman-coleccion.png)
+
+**7. Registrar denuncia → 201 Created con pruebas aprobadas**
+
+![Postman POST 201](docs/capturas/07-postman-post-201.png)
+
+**8. Validación → 400 Bad Request**
+
+![Postman POST 400](docs/capturas/08-postman-post-400.png)
+
+**9. Consulta de folio inexistente → 404 Not Found**
+
+![Postman GET 404](docs/capturas/09-postman-get-404.png)
+
+**10. Collection Runner — todas las pruebas aprobadas**
+
+![Postman Runner](docs/capturas/10-postman-runner.png)
 
 ---
 
