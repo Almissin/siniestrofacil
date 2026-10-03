@@ -28,7 +28,8 @@ Microservicio REST para **registrar y consultar denuncias de siniestros vehicula
 12. [Checklist de revisión](#-checklist-de-revisión)
 13. [Solución de problemas](#-solución-de-problemas)
 14. [Limitaciones y próximos pasos](#-limitaciones-y-próximos-pasos)
-15. [Equipo](#-equipo)
+15. [Evidencias](#-evidencias)
+16. [Equipo](#-equipo)
 
 ---
 
@@ -54,7 +55,7 @@ Microservicio REST para **registrar y consultar denuncias de siniestros vehicula
 siniestrofacil/
 ├── ms-denuncias/                         # Microservicio de denuncias
 │   ├── pom.xml                           # Dependencias y configuración Maven
-│   ├── mvnw / mvnw.cmd                   # Maven Wrapper (Linux-Mac / Windows)
+│   ├── mvnw.cmd                          # Maven Wrapper para Windows
 │   └── src/
 │       ├── main/
 │       │   ├── java/cl/siniestrofacil/denuncias/
@@ -75,8 +76,10 @@ siniestrofacil/
 │       │       └── application.properties           # Puerto 8081 + Swagger en la raíz
 │       └── test/java/cl/siniestrofacil/denuncias/
 │           └── MsDenunciasApplicationTests.java
-└── postman/
-    └── ms-denuncias.postman_collection.json         # Colección de pruebas automatizadas
+├── postman/
+│   └── ms-denuncias.postman_collection.json         # Colección de pruebas automatizadas
+└── docs/
+    └── capturas/                                    # Evidencias de Swagger y Postman
 ```
 
 ### Arquitectura en capas
@@ -106,21 +109,20 @@ Cualquier error → GlobalExceptionHandler → ErrorResponse (JSON uniforme)
 
 | Herramienta | Obligatoria | Cómo verificar |
 |---|---|---|
+| **Windows 10 / 11** con PowerShell | Sí | — |
 | **JDK 25** | Sí | `java -version` |
 | **Git** | Sí | `git --version` |
 | **Postman** (app de escritorio) | Para pruebas | Abrir la app |
 | **Node.js + Newman** | Opcional (pruebas por terminal) | `newman -v` |
 | IDE: **VS Code** (Extension Pack for Java) o **IntelliJ IDEA** | Recomendado | — |
 
-> No es necesario instalar Maven: el proyecto trae **Maven Wrapper** (`mvnw` / `mvnw.cmd`), que descarga la versión correcta automáticamente.
+> No es necesario instalar Maven: el proyecto trae **Maven Wrapper** (`mvnw.cmd`), que descarga la versión correcta automáticamente.
 
 ---
 
 ## 📥 Instalación paso a paso
 
 ### Paso 1 — Instalar el JDK 25
-
-**Windows:**
 
 1. Descarga el instalador `.msi` de un JDK 25 (por ejemplo **Microsoft Build of OpenJDK 25** o **Eclipse Temurin 25**).
 2. Ejecuta el instalador. Si ofrece las opciones **"Set JAVA_HOME variable"** y **"Add to PATH"**, márcalas y listo (salta al punto 5).
@@ -138,13 +140,6 @@ java -version
 echo $env:JAVA_HOME
 # Debe mostrar la carpeta del JDK
 ```
-
-<details>
-<summary><b>Linux / Mac</b></summary>
-
-Instala el JDK 25 con tu gestor de paquetes o SDKMAN, configura `JAVA_HOME` en `~/.bashrc` o `~/.zshrc` y verifica con `java -version`.
-
-</details>
 
 ### Paso 2 — Clonar el repositorio
 
@@ -169,16 +164,6 @@ Si todo está bien, verás al final:
 [INFO] BUILD SUCCESS
 ```
 
-<details>
-<summary><b>Linux / Mac</b></summary>
-
-```bash
-chmod +x mvnw      # solo la primera vez, da permiso de ejecución
-./mvnw clean install
-```
-
-</details>
-
 ### Paso 4 — Configurar Lombok en el IDE
 
 Lombok genera código al compilar; el IDE necesita saberlo para no marcar errores falsos.
@@ -190,7 +175,7 @@ Lombok genera código al compilar; el IDE necesita saberlo para no marcar errore
 
 ## ▶️ Ejecutar el microservicio
 
-**Opción A — Terminal**
+**Opción A — PowerShell**
 
 ```powershell
 .\mvnw.cmd spring-boot:run
@@ -208,18 +193,6 @@ Abrir `MsDenunciasApplication.java` y presionar **Run** ▶️.
 .\mvnw.cmd clean package
 java -jar target\ms-denuncias-0.0.1-SNAPSHOT.jar
 ```
-
-<details>
-<summary><b>Linux / Mac</b></summary>
-
-```bash
-./mvnw spring-boot:run
-# o bien
-./mvnw clean package
-java -jar target/ms-denuncias-0.0.1-SNAPSHOT.jar
-```
-
-</details>
 
 ### Verificar que está arriba
 
@@ -279,7 +252,7 @@ URL base: `http://localhost:8081`
 }
 ```
 
-**Desde PowerShell (Windows):**
+**Desde PowerShell:**
 ```powershell
 $body = @{
     patente        = "ABCD12"
@@ -293,18 +266,7 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:8081/denuncias" `
     -ContentType "application/json" -Body $body
 ```
 
-<details>
-<summary><b>Con cURL (Linux / Mac / Git Bash)</b></summary>
-
-```bash
-curl -X POST http://localhost:8081/denuncias \
-  -H "Content-Type: application/json" \
-  -d '{"patente":"ABCD12","rutAsegurado":"12345678-9","numeroPoliza":"POL-001","fechaSiniestro":"2026-09-28","descripcion":"choque por alcance en semaforo"}'
-```
-
-</details>
-
-> En Windows es más cómodo probar con **Postman** o **Swagger** (ver más abajo).
+> Es más cómodo probar con **Postman** o **Swagger** (ver más abajo).
 
 ### 2. Consultar por folio — `GET /denuncias/{folio}`
 
@@ -460,7 +422,7 @@ La documentación se genera automáticamente con **springdoc-openapi** a partir 
 
 ## 🧪 Pruebas con Postman
 
-La colección `postman/ms-denuncias.postman_collection.json` contiene **12 peticiones con pruebas automatizadas** (scripts `pm.test`).
+La colección `postman/ms-denuncias.postman_collection.json` contiene **13 peticiones con pruebas automatizadas** (scripts `pm.test`).
 
 ### Paso 1 — Importar la colección
 
@@ -542,8 +504,6 @@ El proyecto incluye una prueba que verifica que el contexto de Spring levanta co
 .\mvnw.cmd test
 ```
 
-*(Linux / Mac: `./mvnw test`)*
-
 Resultado esperado:
 
 ```
@@ -565,7 +525,7 @@ Usa esta lista para revisar el proyecto antes de una entrega o un *pull request*
 
 **Instalación y ejecución**
 - [ ] `java -version` muestra JDK 25
-- [ ] `mvnw clean install` termina en `BUILD SUCCESS`
+- [ ] `.\mvnw.cmd clean install` termina en `BUILD SUCCESS`
 - [ ] El servicio levanta en el puerto `8081` sin errores
 
 **Swagger**
@@ -591,7 +551,7 @@ Usa esta lista para revisar el proyecto antes de una entrega o un *pull request*
 
 **Código**
 - [ ] Sin errores de Lombok en el IDE
-- [ ] `mvnw test` pasa sin fallos
+- [ ] `.\mvnw.cmd test` pasa sin fallos
 
 ---
 
@@ -603,7 +563,6 @@ Usa esta lista para revisar el proyecto antes de una entrega o un *pull request*
 | `'java' no se reconoce como un comando...` | Falta `%JAVA_HOME%\bin` en el `Path` | Revisar el [Paso 1](#paso-1--instalar-el-jdk-25) y reabrir la terminal |
 | `mvnw.cmd : El término no se reconoce...` | En PowerShell falta el `.\` o no estás en la carpeta | Entrar a `ms-denuncias` y usar `.\mvnw.cmd` |
 | `Port 8081 was already in use` | Otro proceso (o una ejecución anterior) usa el puerto | En PowerShell: `netstat -ano \| findstr :8081` → anotar el PID → `taskkill /PID <PID> /F` |
-| `./mvnw: Permission denied` (Linux/Mac) | Falta permiso de ejecución | `chmod +x mvnw` |
 | Errores rojos en `getFolio()`, `setPatente()`, etc. | El IDE no procesa Lombok | Habilitar *annotation processing* / limpiar workspace de Java |
 | Swagger da `404` | El servicio no levantó o la URL está mal | Revisar consola y usar `/swagger-ui/index.html` |
 | Postman: `Could not get response` | Servicio apagado o puerto incorrecto | Levantar el servicio y revisar que `baseUrl` sea `http://localhost:8081` |
@@ -626,6 +585,56 @@ Usa esta lista para revisar el proyecto antes de una entrega o un *pull request*
 - [ ] Anotaciones `@Operation` / `@Schema` para enriquecer Swagger
 - [ ] Pruebas unitarias del servicio y pruebas de controlador con MockMvc
 - [ ] Contenerización con Docker y despliegue en la nube (AWS)
+
+---
+
+## 📸 Evidencias
+
+Capturas de las pruebas realizadas con el microservicio corriendo en `http://localhost:8081`.
+
+### Swagger
+
+**1. Swagger UI con los endpoints disponibles**
+
+![Swagger UI](docs/capturas/01-swagger-inicio.png)
+
+**2. Registrar denuncia — `POST /denuncias` → 201 Created**
+
+![Swagger POST 201](docs/capturas/02-swagger-post-201.png)
+
+**3. Consultar denuncia por folio — `GET /denuncias/{folio}` → 200 OK**
+
+![Swagger GET 200](docs/capturas/03-swagger-get-200.png)
+
+**4. Validación — datos inválidos → 400 Bad Request**
+
+![Swagger POST 400](docs/capturas/04-swagger-post-400.png)
+
+**5. Folio inexistente → 404 Not Found**
+
+![Swagger GET 404](docs/capturas/05-swagger-get-404.png)
+
+### Postman
+
+**6. Colección importada**
+
+![Postman colección](docs/capturas/06-postman-coleccion.png)
+
+**7. Registrar denuncia → 201 Created con pruebas aprobadas**
+
+![Postman POST 201](docs/capturas/07-postman-post-201.png)
+
+**8. Validación → 400 Bad Request**
+
+![Postman POST 400](docs/capturas/08-postman-post-400.png)
+
+**9. Consulta de folio inexistente → 404 Not Found**
+
+![Postman GET 404](docs/capturas/09-postman-get-404.png)
+
+**10. Collection Runner — todas las pruebas aprobadas**
+
+![Postman Runner](docs/capturas/10-postman-runner.png)
 
 ---
 
