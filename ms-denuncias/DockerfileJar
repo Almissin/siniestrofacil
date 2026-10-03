@@ -1,0 +1,14 @@
+# imagen del microservicio ms-denuncias
+FROM eclipse-temurin:25-jre
+
+# usar hora de Chile (afecta fechaRegistro y la validacion de fecha futura)
+ENV TZ=America/Santiago
+
+WORKDIR /app
+
+# copiar el .jar generado con: .\mvnw.cmd clean install -DskipTests
+COPY target/ms-denuncias-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8081
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

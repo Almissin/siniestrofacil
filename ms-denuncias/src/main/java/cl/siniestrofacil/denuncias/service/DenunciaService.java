@@ -2,31 +2,31 @@ package cl.siniestrofacil.denuncias.service;
 
 import cl.siniestrofacil.denuncias.dto.DenunciaRequest;
 import cl.siniestrofacil.denuncias.model.Denuncia;
+import cl.siniestrofacil.denuncias.repository.DenunciaRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.Year;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class DenunciaService {
 
-    // guardar denuncias en memoria mientras no exista base de datos
-    private final Map<String, Denuncia> denuncias = new ConcurrentHashMap<>();
+    // guardar denuncias en MySQL
+    private final DenunciaRepository denunciaRepository;
 
-    // llevar contador para el folio correlativo
-    private final AtomicLong contador = new AtomicLong();
-
-    public Denuncia registrar(DenunciaRequest request) {
+    // synchronized evita que dos peticiones simultaneas obtengan el mismo folio
+    public synchronized Denuncia registrar(DenunciaRequest request) {
         Denuncia denuncia = new Denuncia();
 
-        // generar folio con prefijo y correlativo
-        denuncia.setFolio(String.format("SF-%d-%06d", Year.now().getValue(), contador.incrementAndGet()));
+        // generar folio con prefijo y correlativo a partir de lo guardado en la base de datos
+        String prefijo = String.format("SF-%d-", Year.now().getValue());
+        long correlativo = denunciaRepository.countByFolioStartingWith(prefijo) + 1;
+        denuncia.setFolio(String.format("%s%06d", prefijo, correlativo));
 
         // copiar datos recibidos desde la peticion
         denuncia.setPatente(request.getPatente());
@@ -39,14 +39,14 @@ public class DenunciaService {
         denuncia.setEstado("RECIBIDA");
         denuncia.setFechaRegistro(LocalDateTime.now());
 
-        denuncias.put(denuncia.getFolio(), denuncia);
+        Denuncia guardada = denunciaRepository.save(denuncia);
         log.info("denuncia registrada folio={} patente={} poliza={}",
-                denuncia.getFolio(), denuncia.getPatente(), denuncia.getNumeroPoliza());
-        return denuncia;
+                guardada.getFolio(), guardada.getPatente(), guardada.getNumeroPoliza());
+        return guardada;
     }
 
     // buscar denuncia por folio
     public Optional<Denuncia> buscarPorFolio(String folio) {
-        return Optional.ofNullable(denuncias.get(folio));
+        return denunciaRepository.findById(folio);
     }
 }
