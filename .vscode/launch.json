@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    
+    {
+      "type": "java",
+      "name": "ms-usuarios (8080)",
+      "request": "launch",
+      "mainClass": "cl.siniestrofacil.usuarios.MsUsuariosApplication",
+      "projectName": "ms-usuarios",
+      "cwd": "${workspaceFolder}/ms-usuarios",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "ms-denuncias (8081)",
+      "request": "launch",
+      "mainClass": "cl.siniestrofacil.denuncias.MsDenunciasApplication",
+      "projectName": "ms-denuncias",
+      "cwd": "${workspaceFolder}/ms-denuncias",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "ms-polizas (8082)",
+      "request": "launch",
+      "mainClass": "cl.siniestrofacil.polizas.MsPolizasApplication",
+      "projectName": "ms-polizas",
+      "cwd": "${workspaceFolder}/ms-polizas",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "ms-talleres (8083)",
+      "request": "launch",
+      "mainClass": "cl.siniestrofacil.talleres.MsTalleresApplication",
+      "projectName": "ms-talleres",
+      "cwd": "${workspaceFolder}/ms-talleres",
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "SiniestroFacil: levantar todo",
+      "configurations": [
+        "ms-usuarios (8080)",
+        "ms-denuncias (8081)",
+        "ms-polizas (8082)",
+        "ms-talleres (8083)"
+      ],
+      "preLaunchTask": "SiniestroFacil: preparar MySQL",
+      "stopAll": true
+    }
+  ]
+}
