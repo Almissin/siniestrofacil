@@ -1,0 +1,1955 @@
+{
+  "info": {
+    "name": "ms-denuncias v2 - pruebas",
+    "description": "SiniestroFacil - Denuncias v2. Carpetas 0 a 3 y 5 requieren ms-usuarios (8080) y ms-denuncias (8081). La carpeta 4 simula el procesamiento asincrono y requiere ademas ms-polizas (8082) y ms-talleres (8083). Ejecutar en orden con el Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Login (ms-usuarios en puerto 8080)",
+      "item": [
+        {
+          "name": "Login ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@siniestrofacil.cl\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"adminToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login ASEGURADO (rut 12345678-9)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"asegurado@siniestrofacil.cl\",\n  \"password\": \"Asegurado123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"aseguradoToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login TALLER (tallerId 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"taller@siniestrofacil.cl\",\n  \"password\": \"Taller123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"tallerToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Registrar denuncia (ASEGURADO)",
+      "item": [
+        {
+          "name": "Patente nueva + fotografias -> 201 (POL-001)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque por alcance en semaforo\",\n  \"fotografias\": [\n    { \"url\": \"https://fotos.siniestrofacil.cl/ABCD12/parachoque.jpg\", \"descripcion\": \"parachoque trasero\" },\n    { \"url\": \"https://fotos.siniestrofacil.cl/ABCD12/foco.jpg\", \"descripcion\": \"foco izquierdo\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Folio SF-AAAA-NNNNNN del anio actual\", () => { pm.expect(b.folio).to.match(/^SF-\\d{4}-\\d{6}$/); pm.expect(b.folio).to.include(\"SF-\" + new Date().getFullYear()); });",
+                  "pm.test(\"Estado RECIBIDA y rut tomado del token\", () => { pm.expect(b.estado).to.eql(\"RECIBIDA\"); pm.expect(b.rutAsegurado).to.eql(\"12345678-9\"); });",
+                  "pm.collectionVariables.set(\"folio\", b.folio);",
+                  "pm.test(\"Guarda 2 fotografias (relacion 1:N)\", () => pm.expect(b.fotografias).to.have.lengthOf(2));",
+                  "pm.test(\"Header Location\", () => pm.response.to.have.header(\"Location\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patente antigua -> 201 (POL-002, vencida)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"AB1234\",\n  \"numeroPoliza\": \"POL-002\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque por alcance en semaforo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Folio SF-AAAA-NNNNNN del anio actual\", () => { pm.expect(b.folio).to.match(/^SF-\\d{4}-\\d{6}$/); pm.expect(b.folio).to.include(\"SF-\" + new Date().getFullYear()); });",
+                  "pm.test(\"Estado RECIBIDA y rut tomado del token\", () => { pm.expect(b.estado).to.eql(\"RECIBIDA\"); pm.expect(b.rutAsegurado).to.eql(\"12345678-9\"); });",
+                  "pm.collectionVariables.set(\"folioRechazo\", b.folio);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fecha de hoy -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"BCDF34\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"{{hoy}}\",\n  \"descripcion\": \"rayon en puerta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"hoy\", new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Folio SF-AAAA-NNNNNN del anio actual\", () => { pm.expect(b.folio).to.match(/^SF-\\d{4}-\\d{6}$/); pm.expect(b.folio).to.include(\"SF-\" + new Date().getFullYear()); });",
+                  "pm.test(\"Estado RECIBIDA y rut tomado del token\", () => { pm.expect(b.estado).to.eql(\"RECIBIDA\"); pm.expect(b.rutAsegurado).to.eql(\"12345678-9\"); });",
+                  "pm.collectionVariables.set(\"folioPendiente\", b.folio);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Folio correlativo distinto",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folioPendiente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folioPendiente}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Folios distintos\", () => pm.expect(pm.collectionVariables.get(\"folio\")).to.not.eql(pm.collectionVariables.get(\"folioPendiente\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar sin token -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(401);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar como TALLER -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Validaciones (400)",
+      "item": [
+        {
+          "name": "Patente ABC123 -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABC123\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Error en patente\", () => pm.expect(pm.response.json().errores).to.have.property(\"patente\"));",
+                  "pm.test(\"Mensaje esperado\", () => pm.expect(pm.response.json().errores.patente).to.include(\"formato de patente invalido\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patente en minusculas -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"abcd12\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Error en patente\", () => pm.expect(pm.response.json().errores).to.have.property(\"patente\"));",
+                  "pm.test(\"Mensaje esperado\", () => pm.expect(pm.response.json().errores.patente).to.include(\"formato de patente invalido\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fecha futura -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2099-01-01\",\n  \"descripcion\": \"choque\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Error en fechaSiniestro\", () => pm.expect(pm.response.json().errores).to.have.property(\"fechaSiniestro\"));",
+                  "pm.test(\"Mensaje esperado\", () => pm.expect(pm.response.json().errores.fechaSiniestro).to.include(\"no puede ser futura\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fecha con formato DD-MM-AAAA -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"28-09-2026\",\n  \"descripcion\": \"choque\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Error en fechaSiniestro\", () => pm.expect(pm.response.json().errores).to.have.property(\"fechaSiniestro\"));",
+                  "pm.test(\"Mensaje esperado\", () => pm.expect(pm.response.json().errores.fechaSiniestro).to.include(\"AAAA-MM-DD\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Descripcion de 501 caracteres -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Error en descripcion\", () => pm.expect(pm.response.json().errores).to.have.property(\"descripcion\"));",
+                  "pm.test(\"Mensaje esperado\", () => pm.expect(pm.response.json().errores.descripcion).to.include(\"500\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fotografia con url invalida -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"ABCD12\",\n  \"numeroPoliza\": \"POL-001\",\n  \"fechaSiniestro\": \"2026-09-28\",\n  \"descripcion\": \"choque\",\n  \"fotografias\": [\n    {\n      \"url\": \"foto.jpg\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Error en fotografias[0].url\", () => pm.expect(pm.response.json().errores).to.have.property(\"fotografias[0].url\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Campos obligatorios en blanco -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \" \",\n  \"numeroPoliza\": \" \",\n  \"fechaSiniestro\": null,\n  \"descripcion\": \" \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Un error por campo\", () => [\"patente\",\"numeroPoliza\",\"fechaSiniestro\",\"descripcion\"].forEach(c => pm.expect(pm.response.json().errores).to.have.property(c)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Body vacio {} -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Error en los 4 campos\", () => pm.expect(Object.keys(pm.response.json().errores)).to.have.lengthOf(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "JSON mal formado -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"patente\": \"ABCD12\", ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Mensaje\", () => pm.expect(pm.response.json().mensaje).to.eql(\"el cuerpo de la peticion no es un json valido\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Consultas por rol",
+      "item": [
+        {
+          "name": "Consultar mi denuncia (ASEGURADO) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folio}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folio}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Datos registrados\", () => { pm.expect(pm.response.json().patente).to.eql(\"ABCD12\"); pm.expect(pm.response.json().fotografias).to.have.lengthOf(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Folio inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/SF-1999-999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "SF-1999-999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(404);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Mensaje v1\", () => pm.expect(pm.response.json().mensaje).to.eql(\"no existe una denuncia con folio SF-1999-999999\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mis denuncias (ASEGURADO) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/mis-denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "mis-denuncias"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Solo las del asegurado\", () => pm.response.json().forEach(d => pm.expect(d.rutAsegurado).to.eql(\"12345678-9\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar todas (ADMIN) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Lista no vacia\", () => pm.expect(pm.response.json()).to.be.an(\"array\").that.is.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar RECIBIDAS (ADMIN) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias?estado=RECIBIDA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "RECIBIDA"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Todas RECIBIDA\", () => pm.response.json().forEach(d => pm.expect(d.estado).to.eql(\"RECIBIDA\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estado inexistente en filtro -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias?estado=PERDIDA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "PERDIDA"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar todas como ASEGURADO -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TALLER consulta denuncia no asignada -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folio}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folio}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Procesamiento asincrono (simulado: lo hara AWS Lambda en la EP3)",
+      "item": [
+        {
+          "name": "4.1 ms-polizas: vigencia POL-002 -> vencida",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{polizasUrl}}/polizas/POL-002/vigencia",
+              "host": [
+                "{{polizasUrl}}"
+              ],
+              "path": [
+                "polizas",
+                "POL-002",
+                "vigencia"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"No vigente\", () => pm.expect(b.vigente).to.eql(false));",
+                  "pm.collectionVariables.set(\"motivoRechazo\", b.motivo);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Denuncia con poliza no vigente -> RECHAZADA",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folioRechazo}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folioRechazo}}",
+                "resultado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"RECHAZADA\",\n  \"motivo\": \"{{motivoRechazo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"RECHAZADA, sin taller (no continua a la asignacion)\", () => { pm.expect(b.estado).to.eql(\"RECHAZADA\"); pm.expect(b.tallerId).to.eql(null); pm.expect(b.motivoRechazo).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 ms-polizas: vigencia POL-001 -> vigente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{polizasUrl}}/polizas/POL-001/vigencia",
+              "host": [
+                "{{polizasUrl}}"
+              ],
+              "path": [
+                "polizas",
+                "POL-001",
+                "vigencia"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Vigente\", () => pm.expect(pm.response.json().vigente).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 ms-talleres: asignar taller disponible -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{talleresUrl}}/asignaciones",
+              "host": [
+                "{{talleresUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"folioDenuncia\": \"{{folio}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set(\"tallerAsignadoId\", b.tallerId);",
+                  "pm.collectionVariables.set(\"nombreTallerAsignado\", b.nombreTaller);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.5 Denuncia con poliza vigente -> TALLER_ASIGNADO",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folio}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folio}}",
+                "resultado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"TALLER_ASIGNADO\",\n  \"tallerId\": {{tallerAsignadoId}},\n  \"nombreTaller\": \"{{nombreTallerAsignado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"TALLER_ASIGNADO con el taller elegido\", () => { pm.expect(b.estado).to.eql(\"TALLER_ASIGNADO\"); pm.expect(b.tallerId).to.eql(Number(pm.collectionVariables.get(\"tallerAsignadoId\"))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar resultado otra vez -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folio}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folio}}",
+                "resultado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"RECHAZADA\",\n  \"motivo\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(409);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "RECHAZADA sin motivo -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folioPendiente}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folioPendiente}}",
+                "resultado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"RECHAZADA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TALLER_ASIGNADO sin taller -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folioPendiente}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folioPendiente}}",
+                "resultado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"TALLER_ASIGNADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estado no permitido -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folioPendiente}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folioPendiente}}",
+                "resultado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"VEHICULO_RECIBIDO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar resultado como ASEGURADO -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folioPendiente}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folioPendiente}}",
+                "resultado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"RECHAZADA\",\n  \"motivo\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Recepcion del vehiculo (TALLER)",
+      "item": [
+        {
+          "name": "Denuncias asignadas a mi taller -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/asignadas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "asignadas"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const lista = pm.response.json();",
+                  "pm.test(\"Solo denuncias del taller 1\", () => lista.forEach(d => pm.expect(d.tallerId).to.eql(1)));",
+                  "if (Number(pm.collectionVariables.get(\"tallerAsignadoId\")) === 1) {",
+                  "    pm.test(\"Incluye la denuncia recien asignada\", () => pm.expect(lista.map(d => d.folio)).to.include(pm.collectionVariables.get(\"folio\")));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar recepcion -> 200 (o 403 si se asigno a otro taller)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folio}}/recepcion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folio}}",
+                "recepcion"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (Number(pm.collectionVariables.get(\"tallerAsignadoId\")) === 1) {",
+                  "    pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "    pm.test(\"VEHICULO_RECIBIDO con fecha\", () => { pm.expect(pm.response.json().estado).to.eql(\"VEHICULO_RECIBIDO\"); pm.expect(pm.response.json().fechaRecepcion).to.be.a(\"string\"); });",
+                  "} else {",
+                  "    pm.test(\"Status 403: la denuncia es de otro taller\", () => pm.response.to.have.status(403));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recepcion de denuncia RECHAZADA -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folioRechazo}}/recepcion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folioRechazo}}",
+                "recepcion"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(409);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recepcion de denuncia sin taller (RECIBIDA) -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folioPendiente}}/recepcion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folioPendiente}}",
+                "recepcion"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(409);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recepcion como ADMIN -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/denuncias/{{folio}}/recepcion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "denuncias",
+                "{{folio}}",
+                "recepcion"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "authUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "polizasUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "talleresUrl",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "aseguradoToken",
+      "value": ""
+    },
+    {
+      "key": "tallerToken",
+      "value": ""
+    },
+    {
+      "key": "folio",
+      "value": ""
+    },
+    {
+      "key": "folioRechazo",
+      "value": ""
+    },
+    {
+      "key": "folioPendiente",
+      "value": ""
+    },
+    {
+      "key": "hoy",
+      "value": ""
+    },
+    {
+      "key": "motivoRechazo",
+      "value": ""
+    },
+    {
+      "key": "tallerAsignadoId",
+      "value": ""
+    },
+    {
+      "key": "nombreTallerAsignado",
+      "value": ""
+    }
+  ]
+}

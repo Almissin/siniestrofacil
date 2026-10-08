@@ -1,0 +1,1386 @@
+{
+  "info": {
+    "name": "ms-talleres - pruebas",
+    "description": "SiniestroFacil - Talleres y asignaciones. Requiere ms-usuarios (8080) y ms-talleres (8083). Ejecutar en orden con el Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Login (ms-usuarios en puerto 8080)",
+      "item": [
+        {
+          "name": "Login ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@siniestrofacil.cl\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"adminToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login ASEGURADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"asegurado@siniestrofacil.cl\",\n  \"password\": \"Asegurado123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"aseguradoToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login TALLER (tallerId 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"taller@siniestrofacil.cl\",\n  \"password\": \"Taller123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"tallerToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Talleres",
+      "item": [
+        {
+          "name": "Listar talleres sin token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/talleres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(401);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar talleres (ASEGURADO) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Lista con calculo de cupos\", () => {",
+                  "    pm.expect(b).to.be.an(\"array\").that.is.not.empty;",
+                  "    pm.expect(b[0]).to.have.property(\"cuposDisponibles\");",
+                  "    pm.expect(b[0]).to.have.property(\"cuposOcupados\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Talleres disponibles -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/disponibles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "disponibles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Todos activos y con cupo\", () => pm.response.json().forEach(t => { pm.expect(t.activo).to.eql(true); pm.expect(t.cuposDisponibles).to.be.above(0); }));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener taller 1 -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Es Taller Central\", () => pm.expect(pm.response.json().nombre).to.eql(\"Taller Central\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener taller inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(404);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Id no numerico -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "abc"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear taller como ASEGURADO -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"No permitido\",\n  \"rut\": \"76999999-9\",\n  \"direccion\": \"Calle 1\",\n  \"comuna\": \"Santiago\",\n  \"cupoMaximo\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear taller (ADMIN) -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreTaller}}\",\n  \"rut\": \"{{rutTaller}}\",\n  \"direccion\": \"Av. Vicuna Mackenna 4500\",\n  \"comuna\": \"San Joaquin\",\n  \"telefono\": \"+56225554444\",\n  \"email\": \"contacto@tallerprueba.cl\",\n  \"cupoMaximo\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const n = Date.now();",
+                  "pm.collectionVariables.set(\"nombreTaller\", \"Taller Prueba \" + n);",
+                  "pm.collectionVariables.set(\"rutTaller\", (70000000 + Math.floor(Math.random()*9999999)) + \"-\" + Math.floor(Math.random()*10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Activo, sin cupos ocupados\", () => { pm.expect(b.activo).to.eql(true); pm.expect(b.cuposOcupados).to.eql(0); pm.expect(b.cuposDisponibles).to.eql(4); });",
+                  "pm.test(\"Header Location\", () => pm.response.to.have.header(\"Location\"));",
+                  "pm.collectionVariables.set(\"nuevoTallerId\", b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear taller con nombre duplicado -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Taller Central\",\n  \"rut\": \"76888888-8\",\n  \"direccion\": \"Calle 2\",\n  \"comuna\": \"Santiago\",\n  \"cupoMaximo\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(409);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear taller con datos invalidos -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"\",\n  \"rut\": \"76.111.111-1\",\n  \"direccion\": \"\",\n  \"comuna\": \"\",\n  \"email\": \"no-es-email\",\n  \"cupoMaximo\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test(\"Detalle por campo\", () => {",
+                  "    const e = pm.response.json().errores;",
+                  "    [\"nombre\",\"rut\",\"direccion\",\"comuna\",\"email\",\"cupoMaximo\"].forEach(c => pm.expect(e).to.have.property(c));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "JSON mal formado -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"nombre\": \"x\", ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar taller -> 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/{{nuevoTallerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "{{nuevoTallerId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreTaller}}\",\n  \"rut\": \"{{rutTaller}}\",\n  \"direccion\": \"Av. Vicuna Mackenna 4600\",\n  \"comuna\": \"San Joaquin\",\n  \"telefono\": \"+56225554444\",\n  \"email\": \"contacto@tallerprueba.cl\",\n  \"cupoMaximo\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Cupo actualizado\", () => pm.expect(pm.response.json().cupoMaximo).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desactivar taller -> 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/{{nuevoTallerId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "{{nuevoTallerId}}",
+                "estado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activo\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Queda inactivo\", () => pm.expect(pm.response.json().activo).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Asignaciones",
+      "item": [
+        {
+          "name": "Asignar como TALLER -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"folioDenuncia\": \"SF-2026-000001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Asignar con folio invalido -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"folioDenuncia\": \"FOLIO-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(400);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Asignar taller a denuncia (ADMIN) -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"folioDenuncia\": \"{{folioNuevo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const corr = String(Math.floor(100000 + Math.random()*899999));",
+                  "pm.collectionVariables.set(\"folioNuevo\", \"SF-\" + new Date().getFullYear() + \"-\" + corr);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Asignada a un taller activo\", () => { pm.expect(b.estado).to.eql(\"ASIGNADA\"); pm.expect(b.tallerId).to.be.a(\"number\"); pm.expect(b.nombreTaller).to.be.a(\"string\"); });",
+                  "pm.test(\"No se asigna al taller desactivado\", () => pm.expect(b.tallerId).to.not.eql(Number(pm.collectionVariables.get(\"nuevoTallerId\"))));",
+                  "pm.collectionVariables.set(\"asignacionId\", b.id);",
+                  "pm.collectionVariables.set(\"tallerAsignadoId\", b.tallerId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Asignar la misma denuncia otra vez -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"folioDenuncia\": \"{{folioNuevo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(409);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar asignacion por folio (ADMIN) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones/denuncia/{{folioNuevo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones",
+                "denuncia",
+                "{{folioNuevo}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Folio correcto\", () => pm.expect(pm.response.json().folioDenuncia).to.eql(pm.collectionVariables.get(\"folioNuevo\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar folio sin asignacion -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones/denuncia/SF-1999-000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones",
+                "denuncia",
+                "SF-1999-000000"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(404);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar asignaciones (ADMIN) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Lista no vacia\", () => pm.expect(pm.response.json()).to.be.an(\"array\").that.is.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Asignaciones de mi taller (TALLER) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tallerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones/mi-taller",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones",
+                "mi-taller"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Solo del taller 1\", () => pm.response.json().forEach(a => pm.expect(a.tallerId).to.eql(1)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mi taller como ADMIN -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones/mi-taller",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones",
+                "mi-taller"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar asignaciones como ASEGURADO -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aseguradoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(403);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar taller con asignaciones -> 409",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/{{tallerAsignadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "{{tallerAsignadoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(409);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar asignacion -> 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones/{{asignacionId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones",
+                "{{asignacionId}}",
+                "finalizar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Finalizada con fecha\", () => { pm.expect(b.estado).to.eql(\"FINALIZADA\"); pm.expect(b.fechaFinalizacion).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar otra vez -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asignaciones/{{asignacionId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones",
+                "{{asignacionId}}",
+                "finalizar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(409);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar taller sin asignaciones -> 204",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/{{nuevoTallerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "{{nuevoTallerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar taller ya eliminado -> 404",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/talleres/{{nuevoTallerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "talleres",
+                "{{nuevoTallerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Formato de error uniforme\", () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.status).to.eql(404);",
+                  "    pm.expect(b.mensaje).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "authUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "aseguradoToken",
+      "value": ""
+    },
+    {
+      "key": "tallerToken",
+      "value": ""
+    },
+    {
+      "key": "nombreTaller",
+      "value": ""
+    },
+    {
+      "key": "rutTaller",
+      "value": ""
+    },
+    {
+      "key": "nuevoTallerId",
+      "value": ""
+    },
+    {
+      "key": "folioNuevo",
+      "value": ""
+    },
+    {
+      "key": "asignacionId",
+      "value": ""
+    },
+    {
+      "key": "tallerAsignadoId",
+      "value": ""
+    }
+  ]
+}

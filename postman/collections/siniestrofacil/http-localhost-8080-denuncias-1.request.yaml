@@ -11,11 +11,11 @@ body:
 
     \  \"rutAsegurado\": \"12345678-9\",\r
 
-    \  \"numeroPoliza\": \"POL-001\",\r
+    \  \"numeroPoliza\": \"POL-0011\",\r
 
     \  \"fechaSiniestro\": \"2026-09-28\",\r
 
-    \  \"descripcion\": \"choque por alcance en semaforo\"\r
+    \  \"descripcion\": \"choque por animal\"\r
 
     }"
 order: 3080680789675921
