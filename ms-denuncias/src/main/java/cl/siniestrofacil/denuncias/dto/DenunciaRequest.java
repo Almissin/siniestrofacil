@@ -1,35 +1,39 @@
 package cl.siniestrofacil.denuncias.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.List;
 
-// generar gett
-@Getter
-// generar sett
-@Setter
-public class DenunciaRequest {
+/**
+ * Datos de una nueva denuncia. Version 2: el rut del asegurado ya NO viene en el cuerpo,
+ * se toma del token JWT; y se agregan las referencias a fotografias.
+ */
+public record DenunciaRequest(
 
-    // validar patente con formato chileno antiguo o nuevo
-    @NotBlank(message = "la patente es obligatoria")
-    @Pattern(regexp = "^[A-Z]{2}\\d{4}$|^[A-Z]{4}\\d{2}$", message = "formato de patente invalido")
-    private String patente;
+        @Schema(example = "ABCD12")
+        @NotBlank(message = "la patente es obligatoria")
+        @Pattern(regexp = "^[A-Z]{2}\\d{4}$|^[A-Z]{4}\\d{2}$", message = "formato de patente invalido")
+        String patente,
 
-    @NotBlank(message = "el rut del asegurado es obligatorio")
-    private String rutAsegurado;
+        @Schema(example = "POL-001")
+        @NotBlank(message = "el numero de poliza es obligatorio")
+        String numeroPoliza,
 
-    @NotBlank(message = "el numero de poliza es obligatorio")
-    private String numeroPoliza;
+        @Schema(example = "2026-09-28")
+        @NotNull(message = "la fecha del siniestro es obligatoria")
+        @PastOrPresent(message = "la fecha del siniestro no puede ser futura")
+        LocalDate fechaSiniestro,
 
-    // validar que la fecha no sea futura
-    @NotNull(message = "la fecha del siniestro es obligatoria")
-    @PastOrPresent(message = "la fecha del siniestro no puede ser futura")
-    private LocalDate fechaSiniestro;
+        @Schema(example = "choque por alcance en semaforo")
+        @NotBlank(message = "la descripcion es obligatoria")
+        @Size(max = 500, message = "la descripcion no puede superar 500 caracteres")
+        String descripcion,
 
-    // limitar largo de la descripcion
-    @NotBlank(message = "la descripcion es obligatoria")
-    @Size(max = 500, message = "la descripcion no puede superar 500 caracteres")
-    private String descripcion;
+        @Schema(description = "Referencias a las fotografias del siniestro (opcional, maximo 10)")
+        @Size(max = 10, message = "no se pueden adjuntar mas de 10 fotografias")
+        List<@Valid FotografiaRequest> fotografias
+) {
 }
