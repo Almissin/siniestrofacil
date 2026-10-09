@@ -13,7 +13,7 @@
 
 El sistema está formado por **4 microservicios Spring Boot**, cada uno con su **propia base de datos** en un contenedor MySQL.
 
-> Proyecto académico de la asignatura **JVY0101 – Java: Diseño y Construcción de Soluciones Nativas en Nube**, DUOC UC.
+
 
 ---
 
