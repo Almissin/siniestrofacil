@@ -19,7 +19,7 @@ El sistema está formado por **4 microservicios Spring Boot**, cada uno con su *
 
 > ## ⚠️ NOTA IMPORTANTE — Orden de encendido
 >
-> En esta etapa (EP2) **todo se levanta de forma manual y en este orden**:
+> En esta etapa **todo se levanta de forma manual y en este orden**:
 >
 > 1. **Docker Desktop** abierto y con *Engine running*.
 > 2. **El contenedor `mysql-siniestrofacil`** encendido (`docker start mysql-siniestrofacil`) y esperando `ready for connections`.
