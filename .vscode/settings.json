@@ -1,0 +1,16 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+
+    // VS Code relee el pom.xml solo (por ejemplo al cambiar java.version)
+    "java.configuration.updateBuildConfiguration": "automatic",
+
+    // Maven (mvnw y la extension de Maven) usa el mismo JDK que VS Code
+    "maven.terminal.useJavaHome": true,
+
+    // OPCIONAL: si VS Code sigue usando otro JDK, quitar las // y poner la carpeta de TU JDK 25
+    // (en PowerShell:  (Get-Command java).Source  muestra donde esta instalado)
+    // "java.jdt.ls.java.home": "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.4.101-hotspot",
+    // "java.configuration.runtimes": [
+    //     { "name": "JavaSE-25", "path": "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.4.101-hotspot", "default": true }
+    // ]
+}

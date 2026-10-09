@@ -1,0 +1,100 @@
+# levanta MySQL y los 4 microservicios de SiniestroFacil con un solo comando:
+#   docker compose up -d --build
+# antes hay que compilar los .jar de cada microservicio (mvnw.cmd package -DskipTests)
+# "restart: unless-stopped" hace que los contenedores arranquen solos al abrir Docker Desktop
+
+name: siniestrofacil
+
+x-microservicio: &microservicio
+  restart: unless-stopped
+  networks:
+    - siniestrofacil-net
+  depends_on:
+    mysql:
+      condition: service_healthy
+  environment: &env-comun
+    DB_USER: sfuser
+    DB_PASSWORD: sfpass
+    JWT_SECRET: siniestrofacil-clave-secreta-desarrollo-jvy0101-2026
+
+services:
+  mysql:
+    build: ./ms-denuncias/docker
+    image: mysql-siniestrofacil
+    container_name: mysql-siniestrofacil
+    restart: unless-stopped
+    networks:
+      - siniestrofacil-net
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # scripts de las demas bases (se ejecutan solo la primera vez, con el volumen vacio)
+      - ./ms-polizas/docker/create.sql:/docker-entrypoint-initdb.d/02-polizas.sql:ro
+      - ./ms-talleres/docker/create.sql:/docker-entrypoint-initdb.d/03-talleres.sql:ro
+      - ./ms-usuarios/docker/create.sql:/docker-entrypoint-initdb.d/04-usuarios.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  ms-usuarios:
+    <<: *microservicio
+    build:
+      context: ./ms-usuarios
+      dockerfile: DockerfileJar
+    image: ms-usuarios
+    container_name: ms-usuarios
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *env-comun
+      DB_URL: jdbc:mysql://mysql-siniestrofacil:3306/siniestrofacil_usuarios
+
+  ms-denuncias:
+    <<: *microservicio
+    build:
+      context: ./ms-denuncias
+      dockerfile: DockerfileJar
+    image: ms-denuncias
+    container_name: ms-denuncias
+    ports:
+      - "8081:8081"
+    environment:
+      <<: *env-comun
+      DB_URL: jdbc:mysql://mysql-siniestrofacil:3306/siniestrofacil
+
+  ms-polizas:
+    <<: *microservicio
+    build:
+      context: ./ms-polizas
+      dockerfile: DockerfileJar
+    image: ms-polizas
+    container_name: ms-polizas
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *env-comun
+      DB_URL: jdbc:mysql://mysql-siniestrofacil:3306/siniestrofacil_polizas
+
+  ms-talleres:
+    <<: *microservicio
+    build:
+      context: ./ms-talleres
+      dockerfile: DockerfileJar
+    image: ms-talleres
+    container_name: ms-talleres
+    ports:
+      - "8083:8083"
+    environment:
+      <<: *env-comun
+      DB_URL: jdbc:mysql://mysql-siniestrofacil:3306/siniestrofacil_talleres
+
+networks:
+  siniestrofacil-net:
+    name: siniestrofacil-net
+
+volumes:
+  mysql-data:

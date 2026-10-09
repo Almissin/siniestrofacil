@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "MySQL: iniciar y esperar",
+      "type": "shell",
+      "options": {
+        "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] }
+      },
+      "command": "docker start mysql-siniestrofacil | Out-Null; Write-Host 'Esperando a MySQL...'; $i = 0; while ($i -lt 40) { docker exec mysql-siniestrofacil mysqladmin ping -uroot -proot --silent 2>$null | Out-Null; if ($LASTEXITCODE -eq 0) { Write-Host 'MySQL listo en el puerto 3306'; exit 0 }; Start-Sleep -Seconds 2; $i++ }; Write-Host 'MySQL no respondio. Revise que Docker Desktop este abierto.'; exit 1",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "MySQL: crear bases de datos",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] }
+      },
+      "command": "foreach ($f in @('ms-usuarios/docker/create.sql', 'ms-polizas/docker/create.sql', 'ms-talleres/docker/create.sql', 'ms-denuncias/docker/migracion-v2.sql')) { Write-Host \"Ejecutando $f\"; Get-Content $f | docker exec -i mysql-siniestrofacil mysql -uroot -proot 2>$null }; Write-Host 'Bases de datos listas'; exit 0",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "SiniestroFacil: preparar MySQL",
+      "dependsOrder": "sequence",
+      "dependsOn": ["MySQL: iniciar y esperar", "MySQL: crear bases de datos"],
+      "problemMatcher": []
+    },
+    {
+      "label": "SiniestroFacil: detener MySQL",
+      "type": "shell",
+      "options": {
+        "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] }
+      },
+      "command": "docker stop mysql-siniestrofacil; Write-Host 'MySQL detenido'",
+      "problemMatcher": []
+    },
+    {
+      "label": "SiniestroFacil: compilar los 4 con Java 25",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] }
+      },
+      "command": "java -version; foreach ($s in @('ms-usuarios', 'ms-denuncias', 'ms-polizas', 'ms-talleres')) { Write-Host \"===== $s =====\"; Push-Location $s; .\\mvnw.cmd -q clean package; $ok = $LASTEXITCODE; Pop-Location; if ($ok -ne 0) { Write-Host \"FALLO $s\"; exit 1 } }; Write-Host 'Los 4 microservicios compilaron con BUILD SUCCESS'",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    }
+  ]
+}

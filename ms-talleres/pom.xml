@@ -18,7 +18,7 @@
     <description>SiniestroFacil - Gestion de talleres en convenio y asignacion de talleres a denuncias</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
         <springdoc.version>3.1.1</springdoc.version>
         <jjwt.version>0.12.6</jjwt.version>
     </properties>

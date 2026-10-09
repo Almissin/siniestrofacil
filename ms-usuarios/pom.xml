@@ -18,7 +18,7 @@
     <description>SiniestroFacil - Autenticacion (JWT), perfiles y administracion de usuarios y roles</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
         <springdoc.version>3.1.1</springdoc.version>
         <jjwt.version>0.12.6</jjwt.version>
     </properties>
