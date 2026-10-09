@@ -1,39 +1,130 @@
-# 🚗 SiniestroFácil — Microservicio `ms-denuncias`
+# 🚗 SiniestroFácil — Microservicios (EP2)
 
 ![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-JWT-6DB33F?logo=springsecurity)
 ![Maven](https://img.shields.io/badge/Maven-Wrapper-C71A36?logo=apachemaven)
 ![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?logo=swagger)
 ![Postman](https://img.shields.io/badge/Postman-Pruebas-FF6C37?logo=postman)
 ![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?logo=mysql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Contenedores-2496ED?logo=docker&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-MySQL-2496ED?logo=docker&logoColor=white)
 
-Microservicio REST para **registrar y consultar denuncias de siniestros vehiculares**. Al registrar una denuncia, el servicio entrega de inmediato un **folio único** (`SF-AAAA-NNNNNN`) y deja la denuncia en estado `RECIBIDA`, a la espera de su procesamiento posterior. Las denuncias se guardan en **MySQL** y tanto la base de datos como el microservicio se ejecutan en **contenedores Docker** conectados por una red.
+**SiniestroFácil** es una plataforma para que los asegurados **denuncien siniestros automotrices**. El asegurado registra la denuncia y recibe de inmediato un **folio de recepción**. Después, en un proceso independiente, se **valida la póliza** y, si está vigente, se **asigna un taller en convenio**, que luego confirma la recepción del vehículo.
+
+El sistema está formado por **4 microservicios Spring Boot**, cada uno con su **propia base de datos** en un contenedor MySQL.
 
 > Proyecto académico de la asignatura **JVY0101 – Java: Diseño y Construcción de Soluciones Nativas en Nube**, DUOC UC.
 
 ---
 
+> ## ⚠️ NOTA IMPORTANTE — Orden de encendido
+>
+> En esta etapa (EP2) **todo se levanta de forma manual y en este orden**:
+>
+> 1. **Docker Desktop** abierto y con *Engine running*.
+> 2. **El contenedor `mysql-siniestrofacil`** encendido (`docker start mysql-siniestrofacil`) y esperando `ready for connections`.
+> 3. **Los microservicios**, desde **VS Code** (o la terminal / IntelliJ), en este orden:
+>    **ms-usuarios (8080) → ms-denuncias (8081) → ms-polizas (8082) → ms-talleres (8083)**.
+>
+> Si un microservicio se inicia **antes** que MySQL, falla con `Communications link failure`. Basta con encender MySQL y volver a iniciarlo.
+>
+> **Por qué es manual:** la evaluación pide ejecutar los microservicios **en un ambiente local** con **Maven**. En la siguiente etapa (EP3) el proyecto se llevará a **AWS** (API Gateway, Amazon SQS y AWS Lambda), donde se espera que el despliegue y el procesamiento de las denuncias queden **automatizados en la nube**.
+
+---
+
 ## 📑 Tabla de contenidos
 
-1. [Tecnologías](#-tecnologías)
-2. [Estructura del proyecto](#-estructura-del-proyecto)
-3. [Requisitos previos](#-requisitos-previos)
-4. [Instalación paso a paso](#-instalación-paso-a-paso)
-5. [Base de datos MySQL en Docker](#-base-de-datos-mysql-en-docker)
-6. [Ejecutar el microservicio](#-ejecutar-el-microservicio)
-7. [Microservicio en Docker](#-microservicio-en-docker)
-8. [Endpoints de la API](#-endpoints-de-la-api)
-9. [Validaciones](#-validaciones)
-10. [Manejo de errores](#-manejo-de-errores)
-11. [Documentación con Swagger](#-documentación-con-swagger-openapi)
-12. [Pruebas con Postman](#-pruebas-con-postman)
-13. [Pruebas con Maven](#-pruebas-con-maven)
-14. [Checklist de revisión](#-checklist-de-revisión)
-15. [Solución de problemas](#-solución-de-problemas)
-16. [Limitaciones y próximos pasos](#-limitaciones-y-próximos-pasos)
-17. [Evidencias](#-evidencias)
-18. [Equipo](#-equipo)
+1. [Microservicios](#-microservicios)
+2. [Arquitectura](#-arquitectura)
+3. [Roles y usuarios de demostración](#-roles-y-usuarios-de-demostración)
+4. [Tecnologías](#-tecnologías)
+5. [Estructura del repositorio](#-estructura-del-repositorio)
+6. [Requisitos previos](#-requisitos-previos)
+7. [Paso 1 — Clonar el repositorio](#paso-1--clonar-el-repositorio)
+8. [Paso 2 — Encender MySQL en Docker](#paso-2--encender-mysql-en-docker)
+9. [Paso 3 — Crear las bases de datos](#paso-3--crear-las-bases-de-datos)
+10. [Paso 4 — Compilar, probar y empaquetar con Maven](#paso-4--compilar-probar-y-empaquetar-con-maven)
+11. [Paso 5 — Levantar los microservicios](#paso-5--levantar-los-microservicios)
+12. [Paso 6 — Verificar en Swagger](#paso-6--verificar-en-swagger)
+13. [Paso 7 — Verificar los datos en MySQL](#paso-7--verificar-los-datos-en-mysql)
+14. [Paso 8 — Pruebas con Postman](#paso-8--pruebas-con-postman)
+15. [Apagar todo](#-apagar-todo)
+16. [Evidencias](#-evidencias)
+17. [Solución de problemas](#-solución-de-problemas)
+18. [Próxima etapa: AWS (EP3)](#️-próxima-etapa-aws-ep3)
+19. [Equipo](#-equipo)
+
+---
+
+## 🧩 Microservicios
+
+| Microservicio | Puerto | Base de datos | Qué hace | Documentación |
+|---|---|---|---|---|
+| **ms-usuarios** | `8080` | `siniestrofacil_usuarios` | Inicio de sesión con **JWT**, registro de asegurados, perfil y administración de usuarios y roles | [README](ms-usuarios/README.md) |
+| **ms-denuncias** | `8081` | `siniestrofacil` | Registro de denuncias con **folio** `SF-AAAA-NNNNNN`, fotografías, resultado del procesamiento y recepción del vehículo | [README](ms-denuncias/README.md) |
+| **ms-polizas** | `8082` | `siniestrofacil_polizas` | Listado de pólizas con coberturas y **verificación de vigencia** | [README](ms-polizas/README.md) |
+| **ms-talleres** | `8083` | `siniestrofacil_talleres` | Listado de talleres en convenio y **asignación** del taller con cupo | [README](ms-talleres/README.md) |
+
+Todos comparten la misma configuración: **Java 25**, **Spring Boot 4.1.1**, arquitectura en capas (**Controller → Service → Repository → Model**), validaciones, manejo centralizado de errores con el mismo formato JSON, **Swagger** en la raíz de cada puerto y pruebas con **H2** (no necesitan MySQL).
+
+---
+
+## 🏗 Arquitectura
+
+```
+                         Cliente (Postman / Swagger)
+                                   │  HTTP + JSON + token JWT
+       ┌───────────────┬───────────┴───────┬───────────────────┐
+       ▼               ▼                   ▼                   ▼
+┌─────────────┐ ┌──────────────┐   ┌──────────────┐   ┌───────────────┐
+│ ms-usuarios │ │ ms-denuncias │   │  ms-polizas  │   │  ms-talleres  │
+│    8080     │ │     8081     │   │     8082     │   │     8083      │
+│ emite el JWT│ │ valida JWT   │   │ valida JWT   │   │  valida JWT   │
+└──────┬──────┘ └──────┬───────┘   └──────┬───────┘   └───────┬───────┘
+       ▼               ▼                  ▼                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              Contenedor Docker: mysql-siniestrofacil (3306)         │
+│  siniestrofacil_usuarios │ siniestrofacil │ siniestrofacil_polizas │ │
+│                          │                │ siniestrofacil_talleres  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+- **Una base de datos por microservicio** (patrón *Database per Service*).
+- **ms-usuarios** entrega el token; los otros tres lo validan con la misma clave (`jwt.secret`), sin consultarle en cada petición.
+- **Los microservicios no se llaman entre sí.** El registro de la denuncia nunca depende de que Pólizas o Talleres estén disponibles, como exige el caso.
+
+### Flujo de una denuncia
+
+```
+1. Asegurado ─► ms-denuncias  POST /denuncias            → folio SF-2026-000001, estado RECIBIDA
+                     │
+     (EP2: se ejecuta desde Postman con el ADMIN · EP3: Amazon SQS → AWS Lambda)
+                     ▼
+2. ms-polizas   GET /polizas/{numero}/vigencia
+        │ no vigente ─► ms-denuncias PATCH /denuncias/{folio}/resultado → RECHAZADA (no continúa)
+        ▼ vigente
+3. ms-talleres  POST /asignaciones ─► ms-denuncias PATCH /denuncias/{folio}/resultado → TALLER_ASIGNADO
+                     │
+4. Taller ─► ms-denuncias  GET /denuncias/asignadas → PATCH /denuncias/{folio}/recepcion → VEHICULO_RECIBIDO
+```
+
+---
+
+## 👥 Roles y usuarios de demostración
+
+| Rol | Qué puede hacer |
+|---|---|
+| **ASEGURADO** | Registrar denuncias y consultar **solo las suyas**; ver sus pólizas |
+| **TALLER** | Consultar **únicamente** las denuncias asignadas a su taller y confirmar la recepción del vehículo |
+| **ADMIN** | Gestionar usuarios, pólizas y talleres; registrar el resultado del procesamiento (en la EP3 lo hará la Lambda) |
+
+Se crean solos al iniciar cada microservicio (si no existen):
+
+| Rol | Email | Contraseña | Datos asociados |
+|---|---|---|---|
+| ADMIN | `admin@siniestrofacil.cl` | `Admin123!` | — |
+| ASEGURADO | `asegurado@siniestrofacil.cl` | `Asegurado123!` | RUT `12345678-9` · pólizas POL-001 (vigente), POL-002 (vencida), POL-003 (anulada) |
+| TALLER | `taller@siniestrofacil.cl` | `Taller123!` | Taller Central (id 1) |
 
 ---
 
@@ -41,747 +132,357 @@ Microservicio REST para **registrar y consultar denuncias de siniestros vehicula
 
 | Tecnología | Versión | Para qué se usa |
 |---|---|---|
-| Java (OpenJDK) | 25 | Lenguaje del microservicio |
-| Spring Boot | 4.1.1 | Framework base |
-| `spring-boot-starter-webmvc` | 4.1.1 | API REST (controladores, JSON) |
-| `spring-boot-starter-validation` | 4.1.1 | Validación de datos con Jakarta Bean Validation |
-| `spring-boot-starter-data-jpa` | 4.1.1 | Persistencia con JPA / Hibernate |
-| MySQL (imagen Docker) | 8.4 | Base de datos de las denuncias |
-| `mysql-connector-j` | (gestionado por Spring Boot) | Driver JDBC de MySQL |
-| Docker Desktop | Última | Contenedores de MySQL y del microservicio |
-| Lombok | 1.18.x | Genera getters, setters y constructores |
-| springdoc-openapi (`webmvc-ui`) | 3.1.1 | Documentación OpenAPI + Swagger UI |
-| Maven Wrapper | 3.9.x | Compilar y ejecutar sin instalar Maven |
-| Postman | Última | Pruebas automatizadas de la API |
-| JUnit 5 | (incluido) | Prueba de carga del contexto |
+| Java (OpenJDK) | 25 | Lenguaje de los 4 microservicios |
+| Spring Boot | 4.1.1 | Framework base (Web MVC, Validation, Data JPA, Security) |
+| jjwt | 0.12.6 | Generar y validar tokens JWT |
+| MySQL (contenedor Docker) | 8.4 | Bases de datos de los microservicios |
+| Docker Desktop | Última | Contenedor de MySQL |
+| springdoc-openapi | 3.1.1 | Swagger UI |
+| Lombok | (gestionado por Spring Boot) | Getters, setters y constructores |
+| Maven Wrapper | 3.9.x | Compilar, probar y empaquetar sin instalar Maven |
+| JUnit 5 + H2 | (incluido) | Pruebas automáticas sin MySQL |
+| Postman | Última | Pruebas de los endpoints |
+| VS Code | Última | IDE (*Extension Pack for Java*) |
 
 ---
 
-## 📂 Estructura del proyecto
+## 📂 Estructura del repositorio
 
 ```
 siniestrofacil/
-├── ms-denuncias/                         # Microservicio de denuncias
-│   ├── pom.xml                           # Dependencias y configuración Maven
-│   ├── mvnw.cmd                          # Maven Wrapper para Windows
-│   ├── DockerfileJar                     # Imagen Docker del microservicio
-│   ├── docker/
-│   │   ├── Dockerfile                    # Imagen Docker de MySQL
-│   │   └── create.sql                    # Crea la base y la tabla denuncias
-│   └── src/
-│       ├── main/
-│       │   ├── java/cl/siniestrofacil/denuncias/
-│       │   │   ├── MsDenunciasApplication.java      # Clase principal
-│       │   │   ├── controller/
-│       │   │   │   └── DenunciaController.java      # Endpoints REST
-│       │   │   ├── service/
-│       │   │   │   └── DenunciaService.java         # Lógica de negocio y folio
-│       │   │   ├── model/
-│       │   │   │   └── Denuncia.java                # Entidad JPA (tabla denuncias)
-│       │   │   ├── repository/
-│       │   │   │   └── DenunciaRepository.java      # Acceso a MySQL con Spring Data JPA
-│       │   │   ├── dto/
-│       │   │   │   ├── DenunciaRequest.java         # Datos de entrada + validaciones
-│       │   │   │   └── ErrorResponse.java           # Formato común de errores
-│       │   │   └── exception/
-│       │   │       ├── GlobalExceptionHandler.java  # Manejo centralizado de errores
-│       │   │       └── DenunciaNoEncontradaException.java
-│       │   └── resources/
-│       │       └── application.properties           # Puerto 8081, Swagger y conexión a MySQL
-│       └── test/java/cl/siniestrofacil/denuncias/
-│           └── MsDenunciasApplicationTests.java
+├── README.md                      ← este archivo
+├── .vscode/
+│   ├── launch.json                ← levantar los 4 microservicios con F5
+│   ├── tasks.json                 ← encender MySQL, crear bases y compilar
+│   └── settings.json
+├── docker-compose.yml             ← opcional (ver nota en "Solución de problemas")
+├── ms-usuarios/                   ← puerto 8080
+├── ms-denuncias/                  ← puerto 8081 (incluye la imagen de MySQL en docker/)
+├── ms-polizas/                    ← puerto 8082
+├── ms-talleres/                   ← puerto 8083
 ├── postman/
-│   └── ms-denuncias.postman_collection.json         # Colección de pruebas automatizadas
-└── docs/
-    └── capturas/                                    # Evidencias de Swagger y Postman
+│   ├── ms-usuarios.postman_collection.json
+│   ├── ms-denuncias.postman_collection.json
+│   ├── ms-polizas.postman_collection.json
+│   └── ms-talleres.postman_collection.json
+└── docs/capturas/                 ← evidencias
 ```
 
-### Arquitectura en capas
+Cada microservicio tiene la misma estructura en capas:
 
 ```
-Cliente (Postman / Swagger / Front)
-          │  HTTP + JSON
-          ▼
-┌──────────────────────┐
-│  DenunciaController  │  ← recibe la petición y activa @Valid
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│   DenunciaService    │  ← genera folio, fija estado RECIBIDA, guarda
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│  DenunciaRepository  │  ← Spring Data JPA
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│   MySQL 8.4          │  ← tabla denuncias (contenedor Docker)
-└──────────────────────┘
-
-Cualquier error → GlobalExceptionHandler → ErrorResponse (JSON uniforme)
+ms-xxx/
+├── pom.xml · mvnw.cmd · DockerfileJar
+├── docker/create.sql                         ← crea su base de datos
+└── src/main/java/cl/siniestrofacil/xxx/
+    ├── controller/   → endpoints REST
+    ├── service/      → reglas de negocio
+    ├── repository/   → Spring Data JPA
+    ├── model/        → entidades JPA (@OneToMany / @ManyToOne)
+    ├── dto/          → datos de entrada/salida con validaciones
+    ├── security/     → JWT y permisos por rol
+    ├── exception/    → GlobalExceptionHandler
+    └── config/       → Swagger y datos de demostración
 ```
-
-### Arquitectura en Docker
-
-```
-                 Red Docker: siniestrofacil-net
-┌──────────────────────────────────────────────────────────┐
-│                                                          │
-│  ┌────────────────────┐        ┌──────────────────────┐  │
-│  │   ms-denuncias     │ JDBC   │ mysql-siniestrofacil │  │
-│  │   (Spring Boot)    │──────► │     (MySQL 8.4)      │  │
-│  │   puerto 8081      │        │     puerto 3306      │  │
-│  └─────────┬──────────┘        └──────────┬───────────┘  │
-└────────────┼──────────────────────────────┼──────────────┘
-             │ 8081:8081                    │ 3306:3306
-             ▼                              ▼
-   Swagger / Postman (localhost)     Cliente MySQL (opcional)
-```
-
-Dentro de la red, el microservicio encuentra a MySQL por el **nombre del contenedor** (`mysql-siniestrofacil`), no por `localhost`.
 
 ---
 
 ## ✅ Requisitos previos
 
-| Herramienta | Obligatoria | Cómo verificar |
+| Herramienta | Cómo verificar | Debe mostrar |
 |---|---|---|
-| **Windows 10 / 11** con PowerShell | Sí | — |
-| **JDK 25** | Sí | `java -version` |
-| **Git** | Sí | `git --version` |
-| **Docker Desktop** (con WSL 2) | Sí | `docker --version` |
-| **Postman** (app de escritorio) | Para pruebas | Abrir la app |
-| **Node.js + Newman** | Opcional (pruebas por terminal) | `newman -v` |
-| IDE: **VS Code** (Extension Pack for Java) o **IntelliJ IDEA** | Recomendado | — |
+| **JDK 25** | `java -version` | `openjdk version "25..."` |
+| **Git** | `git --version` | Cualquier versión |
+| **Docker Desktop** (con WSL 2) | `docker --version` | Y abajo a la izquierda: *Engine running* |
+| **Postman** | Abrir la app | — |
+| **VS Code** + *Extension Pack for Java* | — | — |
 
-> Docker requiere la **virtualización habilitada en la BIOS** (Intel VT-x / AMD-V). Puedes revisarlo en el *Administrador de tareas → Rendimiento → CPU → Virtualización: Habilitado*.
-
-> No es necesario instalar Maven: el proyecto trae **Maven Wrapper** (`mvnw.cmd`), que descarga la versión correcta automáticamente.
+> No hace falta instalar Maven: cada microservicio trae **Maven Wrapper** (`mvnw.cmd`).
+> La variable `JAVA_HOME` debe apuntar al **JDK 25**. Verifícalo con `echo $env:JAVA_HOME` y, dentro de cualquier microservicio, con `.\mvnw.cmd -v`.
 
 ---
 
-## 📥 Instalación paso a paso
-
-### Paso 1 — Instalar el JDK 25
-
-1. Descarga el instalador `.msi` de un JDK 25 (por ejemplo **Microsoft Build of OpenJDK 25** o **Eclipse Temurin 25**).
-2. Ejecuta el instalador. Si ofrece las opciones **"Set JAVA_HOME variable"** y **"Add to PATH"**, márcalas y listo (salta al punto 5).
-3. Si no las ofrece, configúralas a mano:
-   - Presiona `Win` y busca **"Editar las variables de entorno del sistema"** → botón **Variables de entorno**.
-   - En *Variables del sistema* → **Nueva** → Nombre: `JAVA_HOME`, Valor: la carpeta del JDK (ej. `C:\Program Files\Microsoft\jdk-25.0.2-hotspot`).
-   - Selecciona la variable `Path` → **Editar** → **Nuevo** → escribe `%JAVA_HOME%\bin` → **Aceptar** en todas las ventanas.
-4. **Cierra y vuelve a abrir** la terminal (PowerShell o la terminal de VS Code) para que tome los cambios.
-5. Verifica:
+## Paso 1 — Clonar el repositorio
 
 ```powershell
-java -version
-# Debe mostrar: openjdk version "25..."
-
-echo $env:JAVA_HOME
-# Debe mostrar la carpeta del JDK
+git clone https://github.com/Almissin/siniestrofacil.git
+cd siniestrofacil
+code .
 ```
 
-### Paso 2 — Clonar el repositorio
-
-Abre **PowerShell** (o la terminal integrada de VS Code con `` Ctrl+` ``):
-
-```powershell
-git clone https://github.com/<usuario>/<repositorio>.git
-cd <repositorio>\ms-denuncias
-```
-
-### Paso 3 — Compilar y descargar dependencias
-
-```powershell
-.\mvnw.cmd clean install -DskipTests
-```
-
-> La primera vez tarda un poco porque descarga Maven y todas las dependencias.
-> Se usa `-DskipTests` porque la prueba de contexto necesita MySQL arriba (ver [Pruebas con Maven](#-pruebas-con-maven)).
-
-Si todo está bien, verás al final:
-
-```
-[INFO] BUILD SUCCESS
-```
-
-### Paso 4 — Instalar Docker Desktop
-
-1. Descarga **Docker Desktop para Windows (AMD64)** desde https://www.docker.com/products/docker-desktop/.
-2. Ejecuta el instalador y deja marcada la opción **Use WSL 2 instead of Hyper-V (recommended)**.
-3. Acepta los términos. Puedes iniciar sesión o presionar **Skip**.
-4. Reinicia el PC si lo pide.
-5. Abre Docker Desktop y espera a que abajo a la izquierda diga **Engine running**.
-6. Verifica en PowerShell:
-
-```powershell
-docker --version
-docker ps
-```
-
-### Paso 5 — Configurar Lombok en el IDE
-
-Lombok genera código al compilar; el IDE necesita saberlo para no marcar errores falsos.
-
-- **IntelliJ IDEA:** `Settings → Build, Execution, Deployment → Compiler → Annotation Processors` → marcar **Enable annotation processing**. Instalar el plugin *Lombok* si no viene incluido.
-- **VS Code:** el *Extension Pack for Java* ya incluye soporte para Lombok. Si aparecen errores rojos, ejecutar `Java: Clean Java Language Server Workspace` desde la paleta de comandos (`Ctrl+Shift+P`).
+En VS Code, espera a que la barra inferior diga **Java: Ready** (importa los 4 proyectos Maven).
 
 ---
 
-## 🐬 Base de datos MySQL en Docker
+## Paso 2 — Encender MySQL en Docker
 
-El microservicio guarda las denuncias en MySQL, así que **MySQL debe estar corriendo antes de levantar el microservicio**.
+> **Siempre primero.** Ningún microservicio arranca sin MySQL.
 
-| Dato | Valor |
-|---|---|
-| Contenedor | `mysql-siniestrofacil` |
-| Base de datos | `siniestrofacil` |
-| Usuario / contraseña | `sfuser` / `sfpass` |
-| Contraseña de root | `root` |
-| Puerto | `3306` |
-
-### Paso 1 — Crear la red Docker
-
-La red permite que el microservicio y MySQL se encuentren por su nombre. Se crea **una sola vez**:
+### Primera vez en el PC (crear el contenedor)
 
 ```powershell
 docker network create siniestrofacil-net
-```
-
-### Paso 2 — Construir la imagen de MySQL
-
-Desde la carpeta `ms-denuncias\docker` (ahí están `Dockerfile` y `create.sql`):
-
-```powershell
 cd ms-denuncias\docker
 docker build -t mysql-siniestrofacil .
+docker run -d --name mysql-siniestrofacil --network siniestrofacil-net -p 3306:3306 mysql-siniestrofacil
+cd ..\..
 ```
 
-> Ojo con el **punto final** (`.`): indica que el `Dockerfile` está en la carpeta actual.
-
-### Paso 3 — Levantar el contenedor de MySQL
+### Las siguientes veces (solo encenderlo)
 
 ```powershell
-docker run -d --name mysql-siniestrofacil --network siniestrofacil-net -p 3306:3306 mysql-siniestrofacil
+docker start mysql-siniestrofacil
 ```
 
-Espera a que MySQL termine de iniciar (la primera vez tarda unos 20–30 segundos):
+### Esperar a que esté listo
 
 ```powershell
 docker logs -f mysql-siniestrofacil
 ```
 
-Cuando aparezca `ready for connections` en la **última** parte del log, presiona `Ctrl + C` para salir del log (MySQL sigue corriendo).
-
-### Paso 4 — Verificar la base de datos
-
-```powershell
-docker exec -it mysql-siniestrofacil mysql -u sfuser -p
-```
-
-Escribe la contraseña `sfpass` y luego:
-
-```sql
-USE siniestrofacil;
-SHOW TABLES;
-DESC denuncias;
-```
-
-Debe aparecer la tabla `denuncias` con sus 8 columnas. Para salir: `exit`.
-
----
-
-## ▶️ Ejecutar el microservicio
-
-> **Antes:** el contenedor `mysql-siniestrofacil` debe estar corriendo (ver sección anterior). Desde VS Code, el microservicio se conecta a MySQL en `localhost:3306`.
-
-**Opción A — PowerShell**
-
-```powershell
-.\mvnw.cmd spring-boot:run
-```
-
-Para detenerlo: `Ctrl + C` en la terminal (si pregunta *"¿Desea terminar el trabajo por lotes (S/N)?"*, responde `S`).
-
-**Opción B — Desde el IDE**
-
-Abrir `MsDenunciasApplication.java` y presionar **Run** ▶️.
-
-**Opción C — Ejecutar el JAR generado**
-
-```powershell
-.\mvnw.cmd clean package -DskipTests
-java -jar target\ms-denuncias-0.0.1-SNAPSHOT.jar
-```
-
-### Verificar que está arriba
-
-En la consola debe aparecer algo como:
-
-```
-Tomcat started on port 8081 (http)
-Started MsDenunciasApplication in X.XXX seconds
-```
-
-Luego abre en el navegador: **http://localhost:8081/** → debería cargar Swagger UI.
-
-### Configuración (`application.properties`)
-
-```properties
-spring.application.name=ms-denuncias
-server.port=8081
-# abrir Swagger UI en la raiz (http://localhost:8081/)
-springdoc.swagger-ui.use-root-path=true
-
-# conexion a MySQL
-# los valores despues de ":" se usan al ejecutar desde VS Code (MySQL en localhost)
-# dentro de Docker se reemplazan con variables de entorno (DB_URL, DB_USER, DB_PASSWORD)
-spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/siniestrofacil}
-spring.datasource.username=${DB_USER:sfuser}
-spring.datasource.password=${DB_PASSWORD:sfpass}
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-
-# crear o actualizar las tablas a partir de las entidades
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.open-in-view=false
-```
-
-Gracias a las variables `${DB_URL:...}`, **no hay que editar este archivo** para pasar de VS Code a Docker: en Docker basta con enviar `-e DB_URL=...` al levantar el contenedor.
-
----
-
-## 🐳 Microservicio en Docker
-
-Aquí el microservicio se empaqueta como `.jar` y se ejecuta en su propio contenedor, conectado a MySQL por la red `siniestrofacil-net`.
-
-> **Antes:** detén el microservicio si lo tienes corriendo en VS Code (`Ctrl + C`), porque ocupa el puerto 8081.
-
-### Paso 1 — Generar el `.jar`
-
-Desde la carpeta `ms-denuncias`:
-
-```powershell
-.\mvnw.cmd clean install -DskipTests
-```
-
-`clean` borra la carpeta `target` anterior. Al final debe decir `BUILD SUCCESS` y quedar el archivo `target\ms-denuncias-0.0.1-SNAPSHOT.jar`.
-
-### Paso 2 — Construir la imagen del microservicio
-
-El archivo `DockerfileJar` usa Java 25 (`eclipse-temurin:25-jre`) y copia el `.jar`:
-
-```dockerfile
-FROM eclipse-temurin:25-jre
-ENV TZ=America/Santiago
-WORKDIR /app
-COPY target/ms-denuncias-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
-
-```powershell
-docker build -t ms-denuncias -f DockerfileJar .
-```
-
-### Paso 3 — Levantar el contenedor en la misma red que MySQL
-
-```powershell
-docker run -d --name ms-denuncias --network siniestrofacil-net -p 8081:8081 -e DB_URL=jdbc:mysql://mysql-siniestrofacil:3306/siniestrofacil ms-denuncias
-```
-
-| Parte del comando | Qué hace |
-|---|---|
-| `--name ms-denuncias` | Nombre del contenedor |
-| `--network siniestrofacil-net` | Lo conecta a la misma red que MySQL |
-| `-p 8081:8081` | Publica el puerto para Swagger y Postman |
-| `-e DB_URL=...mysql-siniestrofacil:3306...` | Apunta a MySQL por el nombre del contenedor |
-
-### Paso 4 — Verificar
+Cuando aparezca `ready for connections`, presiona `Ctrl + C`. Confirma con:
 
 ```powershell
 docker ps
-docker logs ms-denuncias
 ```
 
-- `docker ps` debe mostrar **2 contenedores** corriendo: `mysql-siniestrofacil` y `ms-denuncias`.
-- En los logs debe aparecer `Started MsDenunciasApplication`.
-- En Docker Desktop → **Containers** se ven ambos con el punto verde.
-- Abre http://localhost:8081/ → Swagger UI (ahora servido desde el contenedor).
+Debe aparecer `mysql-siniestrofacil` con estado **Up** y `0.0.0.0:3306->3306/tcp`.
 
-### Paso 5 — Comprobar que los datos llegan a MySQL
-
-1. Registra una denuncia desde Swagger o Postman.
-2. Consulta la tabla:
-
-```powershell
-docker exec -it mysql-siniestrofacil mysql -u sfuser -p
-```
-
-```sql
-USE siniestrofacil;
-SELECT folio, patente, estado, fecha_registro FROM denuncias;
-```
-
-La denuncia registrada debe aparecer en el resultado.
-
-### Comandos útiles
-
-| Acción | Comando |
+| Dato | Valor |
 |---|---|
-| Ver contenedores corriendo | `docker ps` |
-| Ver todos (incluso detenidos) | `docker ps -a` |
-| Detener ambos | `docker stop ms-denuncias mysql-siniestrofacil` |
-| Volver a iniciarlos (primero MySQL) | `docker start mysql-siniestrofacil` y luego `docker start ms-denuncias` |
-| Ver logs del microservicio | `docker logs -f ms-denuncias` |
-| Reconstruir tras cambiar código | `docker rm -f ms-denuncias` → Paso 1, 2 y 3 de nuevo |
-| Borrar todo (incluye datos) | `docker rm -f ms-denuncias mysql-siniestrofacil` y `docker network rm siniestrofacil-net` |
+| Contenedor | `mysql-siniestrofacil` |
+| Usuario / contraseña | `sfuser` / `sfpass` |
+| Contraseña de root | `root` |
+| Puerto | `3306` |
+
+> **Desde VS Code:** *Terminal → Run Task… → "SiniestroFacil: preparar MySQL"* enciende el contenedor, espera a que responda y crea las bases (Pasos 2 y 3 juntos).
 
 ---
 
-## 🔌 Endpoints de la API
+## Paso 3 — Crear las bases de datos
 
-URL base: `http://localhost:8081`
+Desde la raíz del repo (una sola vez; si ya existen, no hace nada):
 
-| Método | Ruta | Descripción | Respuestas |
+```powershell
+Get-Content ms-usuarios\docker\create.sql | docker exec -i mysql-siniestrofacil mysql -uroot -proot
+Get-Content ms-polizas\docker\create.sql  | docker exec -i mysql-siniestrofacil mysql -uroot -proot
+Get-Content ms-talleres\docker\create.sql | docker exec -i mysql-siniestrofacil mysql -uroot -proot
+Get-Content ms-denuncias\docker\migracion-v2.sql | docker exec -i mysql-siniestrofacil mysql -uroot -proot
+```
+
+> En PowerShell no funciona `<` para redirigir archivos; por eso se usa `Get-Content ... |`.
+
+Verificar:
+
+```powershell
+docker exec -it mysql-siniestrofacil mysql -usfuser -psfpass -e "SHOW DATABASES;"
+```
+
+Deben aparecer `siniestrofacil`, `siniestrofacil_usuarios`, `siniestrofacil_polizas` y `siniestrofacil_talleres`.
+
+---
+
+## Paso 4 — Compilar, probar y empaquetar con Maven
+
+En cada microservicio:
+
+```powershell
+cd ms-usuarios
+.\mvnw.cmd clean package
+cd ..
+```
+
+| Comando | Qué hace |
+|---|---|
+| `.\mvnw.cmd clean` | Borra la carpeta `target` anterior |
+| `.\mvnw.cmd test` | Ejecuta las pruebas (con H2, no necesitan MySQL) |
+| `.\mvnw.cmd package` | Compila, prueba y genera el `.jar` en `target\` |
+| `.\mvnw.cmd clean install` | Lo anterior + lo instala en el repositorio local de Maven |
+
+Resultado esperado en cada uno: `BUILD SUCCESS` y el archivo `target\ms-xxx-0.0.1-SNAPSHOT.jar`.
+
+| Microservicio | Pruebas | Archivo generado |
+|---|---|---|
+| ms-usuarios | 5 | `target\ms-usuarios-0.0.1-SNAPSHOT.jar` |
+| ms-denuncias | 6 | `target\ms-denuncias-0.0.1-SNAPSHOT.jar` |
+| ms-polizas | 6 | `target\ms-polizas-0.0.1-SNAPSHOT.jar` |
+| ms-talleres | 6 | `target\ms-talleres-0.0.1-SNAPSHOT.jar` |
+
+> **Desde VS Code:** *Terminal → Run Task… → "SiniestroFacil: compilar los 4 con Java 25"* compila los 4 seguidos.
+
+---
+
+## Paso 5 — Levantar los microservicios
+
+> **Antes:** MySQL encendido (Paso 2). **Orden:** ms-usuarios → ms-denuncias → ms-polizas → ms-talleres. Espera a que cada uno muestre `Tomcat started on port ...` antes de iniciar el siguiente.
+
+### Opción A — VS Code con un clic (recomendada para trabajar)
+
+1. Panel **Run and Debug** (`Ctrl + Shift + D`).
+2. Elegir **"SiniestroFacil: levantar todo"**.
+3. Presionar **F5**.
+
+Enciende MySQL, crea las bases si faltan y levanta los 4 microservicios, cada uno en su propia terminal. Para detenerlos todos: **Shift + F5**.
+
+### Opción B — Terminal (una terminal por microservicio)
+
+| Terminal | Comando | Debe aparecer |
+|---|---|---|
+| 1 | `cd ms-usuarios; .\mvnw.cmd spring-boot:run` | `Tomcat started on port 8080` |
+| 2 | `cd ms-denuncias; .\mvnw.cmd spring-boot:run` | `Tomcat started on port 8081` |
+| 3 | `cd ms-polizas; .\mvnw.cmd spring-boot:run` | `Tomcat started on port 8082` |
+| 4 | `cd ms-talleres; .\mvnw.cmd spring-boot:run` | `Tomcat started on port 8083` |
+
+### Opción C — Ejecutar el `.jar` generado en el Paso 4
+
+```powershell
+java -jar ms-usuarios\target\ms-usuarios-0.0.1-SNAPSHOT.jar
+```
+
+(Igual para los otros tres, cada uno en su terminal.)
+
+---
+
+## Paso 6 — Verificar en Swagger
+
+| Microservicio | Swagger UI | Especificación OpenAPI |
+|---|---|---|
+| ms-usuarios | http://localhost:8080/ | http://localhost:8080/v3/api-docs |
+| ms-denuncias | http://localhost:8081/ | http://localhost:8081/v3/api-docs |
+| ms-polizas | http://localhost:8082/ | http://localhost:8082/v3/api-docs |
+| ms-talleres | http://localhost:8083/ | http://localhost:8083/v3/api-docs |
+
+**Cómo usar el token:**
+
+1. En http://localhost:8080/ → `POST /auth/login` → **Try it out** → **Execute** (el ejemplo ya trae al admin).
+2. Copiar el valor de `token` de la respuesta.
+3. En cualquier Swagger presionar **Authorize** 🔒, pegar el token (sin la palabra `Bearer`) y presionar **Authorize**.
+4. Probar, por ejemplo, `GET /polizas/POL-001/vigencia` en http://localhost:8082/.
+
+---
+
+## Paso 7 — Verificar los datos en MySQL
+
+Cada consulta muestra la **relación JPA** de ese microservicio (`@OneToMany` / `@ManyToOne`):
+
+```powershell
+# ms-usuarios: usuarios con su rol (Rol 1:N Usuario)
+docker exec -it mysql-siniestrofacil mysql -usfuser -psfpass -t -e "SELECT u.id, u.email, r.nombre AS rol, u.taller_id, u.activo FROM siniestrofacil_usuarios.usuarios u JOIN siniestrofacil_usuarios.roles r ON r.id = u.rol_id;"
+
+# ms-polizas: polizas con sus coberturas (Poliza 1:N Cobertura)
+docker exec -it mysql-siniestrofacil mysql -usfuser -psfpass -t -e "SELECT p.numero, p.fecha_termino, p.activa, c.nombre AS cobertura, c.monto_maximo FROM siniestrofacil_polizas.polizas p JOIN siniestrofacil_polizas.coberturas c ON c.poliza_id = p.id;"
+
+# ms-talleres: talleres y sus asignaciones (Taller 1:N Asignacion)
+docker exec -it mysql-siniestrofacil mysql -usfuser -psfpass -t -e "SELECT t.id, t.nombre, t.cupo_maximo, a.folio_denuncia, a.estado FROM siniestrofacil_talleres.talleres t LEFT JOIN siniestrofacil_talleres.asignaciones a ON a.taller_id = t.id;"
+
+# ms-denuncias: denuncias con su estado y fotografias (Denuncia 1:N Fotografia)
+docker exec -it mysql-siniestrofacil mysql -usfuser -psfpass -t -e "SELECT d.folio, d.numero_poliza, d.estado, d.nombre_taller, COUNT(f.id) AS fotos FROM siniestrofacil.denuncias d LEFT JOIN siniestrofacil.fotografias f ON f.denuncia_folio = d.folio GROUP BY d.folio;"
+```
+
+> Para ver el **CRUD reflejado en la base de datos**, ejecuta la consulta antes y después de una operación en Postman (por ejemplo, registrar una denuncia o crear una póliza).
+
+---
+
+## Paso 8 — Pruebas con Postman
+
+Importar las 4 colecciones de la carpeta `postman/` (**Import** → seleccionar los archivos) y ejecutarlas con el **Collection Runner**, en el orden por defecto:
+
+| Orden | Colección | Requiere | Pruebas |
 |---|---|---|---|
-| `POST` | `/denuncias` | Registra una denuncia y entrega el folio | `201`, `400` |
-| `GET` | `/denuncias/{folio}` | Consulta una denuncia por su folio | `200`, `404` |
+| 1 | `ms-usuarios.postman_collection.json` | ms-usuarios | 31 |
+| 2 | `ms-polizas.postman_collection.json` | ms-usuarios + ms-polizas | 27 |
+| 3 | `ms-talleres.postman_collection.json` | ms-usuarios + ms-talleres | 31 |
+| 4 | `ms-denuncias.postman_collection.json` | **los 4** | 41 |
 
-### 1. Registrar denuncia — `POST /denuncias`
+Cada colección hace primero el login y guarda los tokens sola. Cubren respuestas exitosas (`200`, `201`, `204`) y de error (`400`, `401`, `403`, `404`, `409`).
 
-**Request:**
-```json
-{
-  "patente": "ABCD12",
-  "rutAsegurado": "12345678-9",
-  "numeroPoliza": "POL-001",
-  "fechaSiniestro": "2026-09-28",
-  "descripcion": "choque por alcance en semaforo"
-}
-```
+La **carpeta 4 de ms-denuncias** recorre el flujo completo del caso, simulando lo que hará la AWS Lambda en la EP3:
 
-**Response `201 Created`:**
-```json
-{
-  "folio": "SF-2026-000001",
-  "patente": "ABCD12",
-  "rutAsegurado": "12345678-9",
-  "numeroPoliza": "POL-001",
-  "fechaSiniestro": "2026-09-28",
-  "descripcion": "choque por alcance en semaforo",
-  "estado": "RECIBIDA",
-  "fechaRegistro": "2026-10-02T10:15:30.123456"
-}
-```
+1. Asegurado registra 2 denuncias (POL-001 y POL-002) → `RECIBIDA`.
+2. POL-002 está **vencida** → la denuncia queda `RECHAZADA` (no continúa a la asignación).
+3. POL-001 está **vigente** → ms-talleres asigna taller → `TALLER_ASIGNADO`.
+4. El taller ve sus denuncias asignadas y confirma la recepción → `VEHICULO_RECIBIDO`.
 
-**Desde PowerShell:**
-```powershell
-$body = @{
-    patente        = "ABCD12"
-    rutAsegurado   = "12345678-9"
-    numeroPoliza   = "POL-001"
-    fechaSiniestro = "2026-09-28"
-    descripcion    = "choque por alcance en semaforo"
-} | ConvertTo-Json
+---
 
-Invoke-RestMethod -Method Post -Uri "http://localhost:8081/denuncias" `
-    -ContentType "application/json" -Body $body
-```
+## ⏹ Apagar todo
 
-> Es más cómodo probar con **Postman** o **Swagger** (ver más abajo).
-
-### 2. Consultar por folio — `GET /denuncias/{folio}`
+1. Detener los microservicios: **Shift + F5** en VS Code (si usaste F5) o `Ctrl + C` en cada terminal.
+2. Detener MySQL:
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8081/denuncias/SF-2026-000001"
+docker stop mysql-siniestrofacil
 ```
 
-También puedes abrir esa URL directamente en el navegador.
-
-- `200 OK` → devuelve la denuncia completa.
-- `404 Not Found` → el folio no existe (ver [Manejo de errores](#-manejo-de-errores)).
-
-### Formato del folio
-
-```
-SF-2026-000001
-│   │    └── correlativo de 6 dígitos (se reinicia al reiniciar el servicio)
-│   └─────── año actual
-└─────────── prefijo SiniestroFácil
-```
+Los datos **no se pierden**: quedan guardados en el contenedor para la próxima vez.
 
 ---
 
-## 🛡 Validaciones
-
-Las validaciones están en `DenunciaRequest.java` y se activan con `@Valid` en el controlador.
-
-| Campo | Reglas | Mensaje de error |
-|---|---|---|
-| `patente` | Obligatoria | `la patente es obligatoria` |
-| | Formato chileno: `AA1234` (antiguo) o `ABCD12` (nuevo), **solo mayúsculas** | `formato de patente invalido` |
-| `rutAsegurado` | Obligatorio | `el rut del asegurado es obligatorio` |
-| `numeroPoliza` | Obligatorio | `el numero de poliza es obligatorio` |
-| `fechaSiniestro` | Obligatoria | `la fecha del siniestro es obligatoria` |
-| | No puede ser futura (hoy sí se acepta) | `la fecha del siniestro no puede ser futura` |
-| | Formato `AAAA-MM-DD` | `la fecha debe tener formato AAAA-MM-DD` |
-| `descripcion` | Obligatoria | `la descripcion es obligatoria` |
-| | Máximo 500 caracteres | `la descripcion no puede superar 500 caracteres` |
-
-**Expresión regular de la patente:**
-
-```regex
-^[A-Z]{2}\d{4}$|^[A-Z]{4}\d{2}$
-```
-
-| Ejemplo | ¿Válida? | Motivo |
-|---|---|---|
-| `ABCD12` | ✅ | Formato nuevo |
-| `AB1234` | ✅ | Formato antiguo |
-| `ABC123` | ❌ | No calza con ningún formato |
-| `abcd12` | ❌ | Minúsculas |
-
-> **Nota:** `@NotBlank` también rechaza textos con solo espacios (ej. `"  "`).
-
----
-
-## ⚠️ Manejo de errores
-
-Todos los errores pasan por `GlobalExceptionHandler` y responden con el mismo formato (`ErrorResponse`). El campo `errores` solo aparece cuando hay detalle por campo.
-
-| Situación | Código | Excepción capturada |
-|---|---|---|
-| Datos que no cumplen las validaciones | `400` | `MethodArgumentNotValidException` |
-| JSON mal formado o fecha con formato incorrecto | `400` | `HttpMessageNotReadableException` |
-| Folio inexistente | `404` | `DenunciaNoEncontradaException` |
-
-**Ejemplo `400` — validación fallida:**
-```json
-{
-  "timestamp": "2026-10-02T10:20:00.000",
-  "status": 400,
-  "error": "Bad Request",
-  "mensaje": "la denuncia tiene datos invalidos",
-  "path": "/denuncias",
-  "errores": {
-    "fechaSiniestro": "la fecha del siniestro no puede ser futura",
-    "patente": "formato de patente invalido"
-  }
-}
-```
-
-**Ejemplo `400` — fecha con formato incorrecto (`28-09-2026`):**
-```json
-{
-  "timestamp": "2026-10-02T10:21:00.000",
-  "status": 400,
-  "error": "Bad Request",
-  "mensaje": "el campo fechaSiniestro tiene un formato invalido",
-  "path": "/denuncias",
-  "errores": {
-    "fechaSiniestro": "la fecha debe tener formato AAAA-MM-DD"
-  }
-}
-```
-
-**Ejemplo `400` — JSON mal formado:**
-```json
-{
-  "timestamp": "2026-10-02T10:22:00.000",
-  "status": 400,
-  "error": "Bad Request",
-  "mensaje": "el cuerpo de la peticion no es un json valido",
-  "path": "/denuncias"
-}
-```
-
-**Ejemplo `404` — folio inexistente:**
-```json
-{
-  "timestamp": "2026-10-02T10:23:00.000",
-  "status": 404,
-  "error": "Not Found",
-  "mensaje": "no existe una denuncia con folio SF-2026-999999",
-  "path": "/denuncias/SF-2026-999999"
-}
-```
-
-> Los errores de un mismo campo se unen con `; ` y los campos se ordenan alfabéticamente para que la respuesta sea siempre igual.
-
----
-
-## 📘 Documentación con Swagger (OpenAPI)
-
-La documentación se genera automáticamente con **springdoc-openapi** a partir de los controladores y DTOs.
+## 📸 Evidencias
 
-| Recurso | URL |
-|---|---|
-| Swagger UI (raíz) | http://localhost:8081/ |
-| Swagger UI (ruta estándar) | http://localhost:8081/swagger-ui/index.html |
-| Especificación OpenAPI (JSON) | http://localhost:8081/v3/api-docs |
-| Especificación OpenAPI (YAML) | http://localhost:8081/v3/api-docs.yaml |
+Capturas tomadas con los 4 microservicios corriendo en local.
 
-### Cómo probar desde Swagger
+### MySQL y Maven
 
-1. Levanta el microservicio y abre **http://localhost:8081/**.
-2. Despliega **`POST /denuncias`** → clic en **Try it out**.
-3. Pega el JSON de ejemplo en el cuerpo y presiona **Execute**.
-4. Revisa el código de respuesta (`201`) y copia el `folio` generado.
-5. Despliega **`GET /denuncias/{folio}`** → **Try it out** → pega el folio → **Execute**.
-6. Prueba también con datos inválidos para ver las respuestas `400` y con un folio falso para ver el `404`.
+**1. Contenedor `mysql-siniestrofacil` corriendo (`docker ps`)**
 
-### Dependencia en `pom.xml`
+![docker ps](docs/capturas/ep2/01-docker-mysql-up.png)
 
-```xml
-<dependency>
-    <groupId>org.springdoc</groupId>
-    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-    <version>3.1.1</version>
-</dependency>
-```
+**2. Las 4 bases de datos creadas (`SHOW DATABASES`)**
 
----
+![Bases de datos](docs/capturas/ep2/02-mysql-bases.png)
 
-## 🧪 Pruebas con Postman
+**3. Compilación con Maven — `BUILD SUCCESS` y pruebas aprobadas**
 
-La colección `postman/ms-denuncias.postman_collection.json` contiene **13 peticiones con pruebas automatizadas** (scripts `pm.test`).
+![Maven build](docs/capturas/ep2/03-maven-build-success.png)
 
-### Paso 1 — Importar la colección
+**4. Los 4 microservicios levantados en VS Code**
 
-1. Abre Postman → **Import**.
-2. Selecciona el archivo `postman/ms-denuncias.postman_collection.json`.
-3. Aparecerá la colección **"ms-denuncias - pruebas"**.
+![VS Code](docs/capturas/ep2/04-vscode-4-microservicios.png)
 
-### Paso 2 — Revisar las variables
+### Swagger
 
-La colección trae sus propias variables (pestaña **Variables** de la colección):
+**5. ms-usuarios — login y token JWT**
 
-| Variable | Valor | Uso |
-|---|---|---|
-| `baseUrl` | `http://localhost:8081` | URL del microservicio |
-| `folio` | *(se llena sola)* | El primer POST guarda aquí el folio generado |
+![Swagger ms-usuarios](docs/capturas/ep2/05-swagger-usuarios-login.png)
 
-### Paso 3 — Ejecutar con el Collection Runner
+**6. ms-denuncias — denuncia registrada con folio (201)**
 
-1. Asegúrate de que el microservicio esté corriendo.
-2. Clic derecho en la colección → **Run collection**.
-3. **Ejecuta en el orden por defecto** (la consulta por folio usa el folio guardado por el primer POST).
-4. Presiona **Run** y revisa que todas las pruebas queden en verde ✅.
+![Swagger ms-denuncias](docs/capturas/ep2/06-swagger-denuncias-201.png)
 
-### Casos cubiertos
+**7. ms-polizas — vigencia de una póliza**
 
-**1. Registrar denuncia (casos válidos)** — esperan `201`
+![Swagger ms-polizas](docs/capturas/ep2/07-swagger-polizas-vigencia.png)
 
-| Prueba | Qué verifica |
-|---|---|
-| Patente nueva (`ABCD12`) | Folio `SF-AAAA-NNNNNN`, año actual, estado `RECIBIDA`, datos devueltos, fecha de registro. Guarda el folio |
-| Patente antigua (`AB1234`) | Acepta formato antiguo y genera un folio distinto |
-| Fecha de hoy | La fecha actual no se considera futura |
+**8. ms-talleres — taller asignado a una denuncia (201)**
 
-**2. Consultar denuncia por folio**
+![Swagger ms-talleres](docs/capturas/ep2/08-swagger-talleres-asignacion.png)
 
-| Prueba | Esperado |
-|---|---|
-| Folio existente | `200` con los datos registrados |
-| Folio inexistente (`SF-2026-999999`) | `404` con mensaje `no existe una denuncia con folio ...` |
+### Datos en MySQL
 
-**3. Validaciones** — todas esperan `400` y un `mensaje` no vacío
+**9. Usuarios con su rol**
 
-| Prueba | Error esperado |
-|---|---|
-| Patente `ABC123` | `formato de patente invalido` |
-| Patente en minúsculas `abcd12` | `formato de patente invalido` |
-| Fecha futura `2099-01-01` | `la fecha del siniestro no puede ser futura` |
-| Fecha `28-09-2026` | `la fecha debe tener formato AAAA-MM-DD` |
-| Descripción de 501 caracteres | `la descripcion no puede superar 500 caracteres` |
-| Campos obligatorios en blanco | Un error por cada campo vacío |
-| Body vacío `{}` | Error en los 5 campos |
-| JSON mal formado | `el cuerpo de la peticion no es un json valido` |
+![SQL usuarios](docs/capturas/ep2/09-sql-usuarios-roles.png)
 
-### (Opcional) Ejecutar por terminal con Newman
+**10. Pólizas con sus coberturas**
 
-Requiere [Node.js](https://nodejs.org/) instalado. Desde la raíz del repositorio, en PowerShell:
+![SQL polizas](docs/capturas/ep2/10-sql-polizas-coberturas.png)
 
-```powershell
-npm install -g newman
-newman run postman\ms-denuncias.postman_collection.json
-```
+**11. Talleres con sus asignaciones**
 
-> Si PowerShell muestra *"la ejecución de scripts está deshabilitada en este sistema"*, ejecuta una sola vez:
-> ```powershell
-> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-> ```
+![SQL talleres](docs/capturas/ep2/11-sql-talleres-asignaciones.png)
 
-> ℹ️ Las denuncias quedan guardadas en **MySQL**: al reiniciar el microservicio no se pierden y el folio continúa el correlativo (`000002`, `000003`, …). La colección funciona igual con el servicio en VS Code o en Docker, porque ambos usan `http://localhost:8081`.
+**12. Denuncias con estado, taller y fotografías**
 
-> ℹ️ En `postman/collections/` hay peticiones sueltas antiguas que apuntan al puerto **8080**. El servicio corre en **8081**; usa la colección `ms-denuncias.postman_collection.json`, que ya tiene el puerto correcto.
+![SQL denuncias](docs/capturas/ep2/12-sql-denuncias-estados.png)
 
----
+### Postman
 
-## 🧰 Pruebas con Maven
+**13. Collection Runner — flujo completo de ms-denuncias aprobado**
 
-El proyecto incluye una prueba que verifica que el contexto de Spring levanta correctamente. Como el contexto se conecta a la base de datos, **el contenedor `mysql-siniestrofacil` debe estar corriendo** antes de ejecutarla.
+![Postman runner](docs/capturas/ep2/13-postman-runner-denuncias.png)
 
-```powershell
-.\mvnw.cmd test
-```
-
-Resultado esperado:
-
-```
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS
-```
-
-Para una verificación completa (compilar + probar + empaquetar):
-
-```powershell
-.\mvnw.cmd clean verify
-```
-
----
-
-## 📋 Checklist de revisión
-
-Usa esta lista para revisar el proyecto antes de una entrega o un *pull request*:
-
-**Instalación y ejecución**
-- [ ] `java -version` muestra JDK 25
-- [ ] `.\mvnw.cmd clean install -DskipTests` termina en `BUILD SUCCESS`
-- [ ] El servicio levanta en el puerto `8081` sin errores
-
-**Docker**
-- [ ] `docker --version` responde y Docker Desktop dice *Engine running*
-- [ ] Existe la red `siniestrofacil-net` (`docker network ls`)
-- [ ] Contenedores `mysql-siniestrofacil` y `ms-denuncias` corriendo (`docker ps`)
-- [ ] La tabla `denuncias` existe en MySQL (`DESC denuncias;`)
-- [ ] Una denuncia registrada por Swagger/Postman aparece con `SELECT * FROM denuncias;`
-
-**Swagger**
-- [ ] `http://localhost:8081/` carga Swagger UI
-- [ ] Aparecen los endpoints `POST /denuncias` y `GET /denuncias/{folio}`
-- [ ] `http://localhost:8081/v3/api-docs` devuelve el JSON de OpenAPI
-
-**Funcionalidad**
-- [ ] `POST` válido responde `201` con folio `SF-AAAA-NNNNNN` y estado `RECIBIDA`
-- [ ] `GET` con folio existente responde `200`
-- [ ] `GET` con folio inexistente responde `404`
-
-**Validaciones**
-- [ ] Patente inválida o en minúsculas → `400`
-- [ ] Fecha futura → `400`; fecha de hoy → `201`
-- [ ] Fecha con formato `DD-MM-AAAA` → `400`
-- [ ] Descripción > 500 caracteres → `400`
-- [ ] Campos vacíos / body `{}` / JSON roto → `400`
-
-**Postman**
-- [ ] Colección importada y ejecutada con el Runner
-- [ ] Todas las pruebas en verde
-
-**Código**
-- [ ] Sin errores de Lombok en el IDE
-- [ ] `.\mvnw.cmd test` pasa sin fallos
+> Las evidencias de la versión 1 de ms-denuncias (Swagger, Postman y Docker) están en [`docs/capturas/`](docs/capturas/).
 
 ---
 
@@ -789,104 +490,37 @@ Usa esta lista para revisar el proyecto antes de una entrega o un *pull request*
 
 | Problema | Causa probable | Solución |
 |---|---|---|
-| `release version 25 not supported` | El JDK activo no es el 25 | Instalar JDK 25, revisar `JAVA_HOME` y **reabrir la terminal** |
-| `'java' no se reconoce como un comando...` | Falta `%JAVA_HOME%\bin` en el `Path` | Revisar el [Paso 1](#paso-1--instalar-el-jdk-25) y reabrir la terminal |
-| `mvnw.cmd : El término no se reconoce...` | En PowerShell falta el `.\` o no estás en la carpeta | Entrar a `ms-denuncias` y usar `.\mvnw.cmd` |
-| `Port 8081 was already in use` | Otro proceso (o una ejecución anterior) usa el puerto | En PowerShell: `netstat -ano \| findstr :8081` → anotar el PID → `taskkill /PID <PID> /F` |
-| Errores rojos en `getFolio()`, `setPatente()`, etc. | El IDE no procesa Lombok | Habilitar *annotation processing* / limpiar workspace de Java |
-| Swagger da `404` | El servicio no levantó o la URL está mal | Revisar consola y usar `/swagger-ui/index.html` |
-| Postman: `Could not get response` | Servicio apagado o puerto incorrecto | Levantar el servicio y revisar que `baseUrl` sea `http://localhost:8081` |
-| Prueba "Consultar folio existente" falla | Se ejecutó sola o fuera de orden | Ejecutar la colección completa en orden con el Runner |
-| `Communications link failure` al iniciar | MySQL no está corriendo o aún está iniciando | `docker start mysql-siniestrofacil`, esperar `ready for connections` y volver a levantar el microservicio |
-| Contenedor `ms-denuncias` se detiene solo | Arrancó antes que MySQL o no está en la red | `docker logs ms-denuncias`; verificar `--network siniestrofacil-net` y luego `docker start ms-denuncias` |
-| `Bind for 0.0.0.0:3306 failed: port is already allocated` | Hay otro MySQL instalado en Windows usando el 3306 | Detener ese servicio MySQL de Windows, o usar `-p 3307:3306` (y en VS Code `DB_URL` con puerto 3307) |
-| `Conflict. The container name ... is already in use` | Ya existe un contenedor con ese nombre | `docker rm -f <nombre>` y repetir el `docker run` |
-| `docker: error during connect` | Docker Desktop no está abierto | Abrir Docker Desktop y esperar *Engine running* |
-| `COPY failed: ... ms-denuncias-0.0.1-SNAPSHOT.jar: not found` | No se generó el `.jar` | Ejecutar `.\mvnw.cmd clean install -DskipTests` antes del `docker build` |
-| `Virtualization support not detected` | Virtualización deshabilitada en la BIOS | Habilitar Intel VT-x / AMD-V en la BIOS (depende del fabricante) |
-| `.\mvnw.cmd test` falla | MySQL no está corriendo | Levantar `mysql-siniestrofacil` y repetir |
-| Advertencia `sun.misc.Unsafe` al compilar | Lombok usa una API antigua del JDK | Es solo una advertencia; no afecta la ejecución |
+| `Communications link failure` / `Connection refused` al iniciar | MySQL apagado o iniciando | `docker start mysql-siniestrofacil`, esperar `ready for connections` y volver a iniciar el microservicio |
+| `Unknown database 'siniestrofacil_...'` | No se crearon las bases | Ejecutar el **Paso 3** |
+| `Data truncated for column 'estado'` (ms-denuncias) | Falta la migración v2 | Ejecutar `migracion-v2.sql` (Paso 3) |
+| `Port 808X was already in use` | Otro proceso o contenedor usa el puerto | Ver la nota de `docker-compose` abajo, o `Get-NetTCPConnection -LocalPort 808X -State Listen` y `Stop-Process -Id <numero> -Force` |
+| `Bind for 0.0.0.0:3306 failed: port is already allocated` | Otro MySQL (de Windows u otro proyecto) usa el 3306 | Detener ese servicio o contenedor y repetir el Paso 2 |
+| `release version 25 not supported` | Maven usa un JDK antiguo | `JAVA_HOME` debe apuntar al JDK 25; cerrar y abrir VS Code |
+| `401` en todas las peticiones | Falta el token o venció (dura 2 horas) | Repetir el login y usar **Authorize** |
+| `403` | El rol no tiene permiso para esa operación | Usar el usuario del rol correcto (ver tabla de roles) |
+| Errores rojos de Lombok en VS Code | VS Code no procesó el proyecto | `Ctrl + Shift + P` → `Java: Clean Java Language Server Workspace` |
+
+> **Nota sobre `docker-compose.yml`:** es una alternativa opcional que levanta MySQL y los 4 microservicios en contenedores. Sus contenedores tienen `restart: unless-stopped`, así que **se encienden solos al abrir Docker Desktop** y ocupan los puertos 8080–8083. Si vas a trabajar desde VS Code, déjalos apagados:
+>
+> ```powershell
+> docker stop ms-usuarios ms-denuncias ms-polizas ms-talleres
+> ```
+>
+> Deja encendido solo `mysql-siniestrofacil`.
 
 ---
 
-## 🚧 Limitaciones y próximos pasos
+## ☁️ Próxima etapa: AWS (EP3)
 
-**Limitaciones actuales**
-- Credenciales de MySQL de ejemplo dentro del `Dockerfile` (solo para entorno académico).
-- El RUT solo se valida como obligatorio, no se verifica el dígito verificador.
-- El estado queda fijo en `RECIBIDA` (aún no existe el procesamiento asíncrono).
+En la tercera experiencia se integrarán **funciones serverless en AWS** y los microservicios se desplegarán en la nube. Según el diseño de la EP1:
 
-**Próximos pasos sugeridos**
-- [ ] `docker-compose.yml` para levantar MySQL y el microservicio con un solo comando
-- [ ] Validador personalizado de RUT chileno (módulo 11)
-- [ ] Procesamiento asíncrono para cambiar el estado de la denuncia
-- [ ] Anotaciones `@Operation` / `@Schema` para enriquecer Swagger
-- [ ] Pruebas unitarias del servicio y pruebas de controlador con MockMvc
-- [ ] Despliegue de los contenedores en la nube (AWS)
+| Hoy (EP2, local y manual) | EP3 (AWS) |
+|---|---|
+| Postman llama directo a cada puerto | **Amazon API Gateway** como única entrada; los microservicios no se exponen directamente |
+| El ADMIN ejecuta desde Postman la validación de póliza y la asignación de taller | **Amazon SQS** encola las denuncias nuevas y una **AWS Lambda** las procesa sola (con cola de errores DLQ) |
+| MySQL y microservicios se encienden a mano | Despliegue en la nube; se espera que quede automatizado |
 
----
-
-## 📸 Evidencias
-
-Capturas de las pruebas realizadas con el microservicio corriendo en `http://localhost:8081`.
-
-### Swagger
-
-**1. Swagger UI con los endpoints disponibles**
-
-![Swagger UI](docs/capturas/01-swagger-inicio.png)
-
-**2. Registrar denuncia — `POST /denuncias` → 201 Created**
-
-![Swagger POST 201](docs/capturas/02-swagger-post-201.png)
-
-**3. Consultar denuncia por folio — `GET /denuncias/{folio}` → 200 OK**
-
-![Swagger GET 200](docs/capturas/03-swagger-get-200.png)
-
-**4. Validación — datos inválidos → 400 Bad Request**
-
-![Swagger POST 400](docs/capturas/04-swagger-post-400.png)
-
-**5. Folio inexistente → 404 Not Found**
-
-![Swagger GET 404](docs/capturas/05-swagger-get-404.png)
-
-### Postman
-
-**6. Colección importada**
-
-![Postman colección](docs/capturas/06-postman-coleccion.png)
-
-**7. Registrar denuncia → 201 Created con pruebas aprobadas**
-
-![Postman POST 201](docs/capturas/07-postman-post-201.png)
-
-**8. Validación → 400 Bad Request**
-
-![Postman POST 400](docs/capturas/08-postman-post-400.png)
-
-**9. Consulta de folio inexistente → 404 Not Found**
-
-![Postman GET 404](docs/capturas/09-postman-get-404.png)
-
-**10. Collection Runner — todas las pruebas aprobadas**
-
-![Postman Runner](docs/capturas/10-postman-runner.png)
-
-### Docker
-
-**11. Generación del `.jar` — BUILD SUCCESS**
-
-![Maven build](docs/capturas/11-docker-build-jar.png)
-
-**12. Docker Desktop — contenedores MySQL y microservicio corriendo**
-
-![Docker contenedores](docs/capturas/12-docker-contenedores.png)
-
-**13. MySQL — denuncias guardadas en la tabla**
-
-![MySQL datos](docs/capturas/13-docker-mysql-datos.png)
+Por eso los endpoints `GET /polizas/{numero}/vigencia`, `POST /asignaciones` y `PATCH /denuncias/{folio}/resultado` ya existen: son los que llamará la Lambda.
 
 ---
 
