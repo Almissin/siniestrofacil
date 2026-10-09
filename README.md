@@ -7,28 +7,11 @@
 ![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?logo=swagger)
 ![Postman](https://img.shields.io/badge/Postman-Pruebas-FF6C37?logo=postman)
 ![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?logo=mysql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-MySQL-2496ED?logo=docker&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Contenedores-2496ED?logo=docker&logoColor=white)
 
-**SiniestroFácil** es una plataforma para que los asegurados **denuncien siniestros automotrices**. El asegurado registra la denuncia y recibe de inmediato un **folio de recepción**. Después, en un proceso independiente, se **valida la póliza** y, si está vigente, se **asigna un taller en convenio**, que luego confirma la recepción del vehículo.
+Microservicio REST para **registrar y consultar denuncias de siniestros vehiculares**. Al registrar una denuncia, el servicio entrega de inmediato un **folio único** (`SF-AAAA-NNNNNN`) y deja la denuncia en estado `RECIBIDA`, a la espera de su procesamiento posterior. Las denuncias se guardan en **MySQL** y tanto la base de datos como el microservicio se ejecutan en **contenedores Docker** conectados por una red.
 
-El sistema está formado por **4 microservicios Spring Boot**, cada uno con su **propia base de datos** en un contenedor MySQL.
-
-> Proyecto académico de la asignatura **JVY0101 – Java: Diseño y Construcción de Soluciones Nativas en Nube**, DUOC UC.
-
----
-
-> ## ⚠️ NOTA IMPORTANTE — Orden de encendido
 >
-> En esta etapa (EP2) **todo se levanta de forma manual y en este orden**:
->
-> 1. **Docker Desktop** abierto y con *Engine running*.
-> 2. **El contenedor `mysql-siniestrofacil`** encendido (`docker start mysql-siniestrofacil`) y esperando `ready for connections`.
-> 3. **Los microservicios**, desde **VS Code** (o la terminal / IntelliJ), en este orden:
->    **ms-usuarios (8080) → ms-denuncias (8081) → ms-polizas (8082) → ms-talleres (8083)**.
->
-> Si un microservicio se inicia **antes** que MySQL, falla con `Communications link failure`. Basta con encender MySQL y volver a iniciarlo.
->
-> **Por qué es manual:** la evaluación pide ejecutar los microservicios **en un ambiente local** con **Maven**. En la siguiente etapa (EP3) el proyecto se llevará a **AWS** (API Gateway, Amazon SQS y AWS Lambda), donde se espera que el despliegue y el procesamiento de las denuncias queden **automatizados en la nube**.
 
 ---
 
