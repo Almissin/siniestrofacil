@@ -13,13 +13,11 @@
 
 El sistema está formado por **4 microservicios Spring Boot**, cada uno con su **propia base de datos** en un contenedor MySQL.
 
-> Proyecto académico de la asignatura **JVY0101 – Java: Diseño y Construcción de Soluciones Nativas en Nube**, DUOC UC.
-
 ---
 
 > ## ⚠️ NOTA IMPORTANTE — Orden de encendido
 >
-> En esta etapa (EP2) **todo se levanta de forma manual y en este orden**:
+> En esta etapa **todo se levanta de forma manual y en este orden**:
 >
 > 1. **Docker Desktop** abierto y con *Engine running*.
 > 2. **El contenedor `mysql-siniestrofacil`** encendido (`docker start mysql-siniestrofacil`) y esperando `ready for connections`.
@@ -28,7 +26,7 @@ El sistema está formado por **4 microservicios Spring Boot**, cada uno con su *
 >
 > Si un microservicio se inicia **antes** que MySQL, falla con `Communications link failure`. Basta con encender MySQL y volver a iniciarlo.
 >
-> **Por qué es manual:** la evaluación pide ejecutar los microservicios **en un ambiente local** con **Maven**. En la siguiente etapa (EP3) el proyecto se llevará a **AWS** (API Gateway, Amazon SQS y AWS Lambda), donde se espera que el despliegue y el procesamiento de las denuncias queden **automatizados en la nube**.
+> **Por qué es manual:** la evaluación pide ejecutar los microservicios **en un ambiente local** con **Maven**. En la siguiente etapa (Unidad 3) el proyecto se llevará a **AWS** (API Gateway, Amazon SQS y AWS Lambda), donde se espera que el despliegue y el procesamiento de las denuncias queden **automatizados en la nube**.
 
 ---
 
@@ -530,7 +528,6 @@ Por eso los endpoints `GET /polizas/{numero}/vigencia`, `POST /asignaciones` y `
 |---|
 | Roberto Bustamante |
 | Alex Messin De La Cruz |
-| Jahaira Torrijo |
 
 **DUOC UC — Escuela de Informática y Telecomunicaciones**
 Asignatura JVY0101 · 2026
