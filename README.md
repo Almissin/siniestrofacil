@@ -416,73 +416,6 @@ Los datos **no se pierden**: quedan guardados en el contenedor para la próxima 
 
 ---
 
-## 📸 Evidencias
-
-Capturas tomadas con los 4 microservicios corriendo en local.
-
-### MySQL y Maven
-
-**1. Contenedor `mysql-siniestrofacil` corriendo (`docker ps`)**
-
-![docker ps](docs/capturas/ep2/01-docker-mysql-up.png)
-
-**2. Las 4 bases de datos creadas (`SHOW DATABASES`)**
-
-![Bases de datos](docs/capturas/ep2/02-mysql-bases.png)
-
-**3. Compilación con Maven — `BUILD SUCCESS` y pruebas aprobadas**
-
-![Maven build](docs/capturas/ep2/03-maven-build-success.png)
-
-**4. Los 4 microservicios levantados en VS Code**
-
-![VS Code](docs/capturas/ep2/04-vscode-4-microservicios.png)
-
-### Swagger
-
-**5. ms-usuarios — login y token JWT**
-
-![Swagger ms-usuarios](docs/capturas/ep2/05-swagger-usuarios-login.png)
-
-**6. ms-denuncias — denuncia registrada con folio (201)**
-
-![Swagger ms-denuncias](docs/capturas/ep2/06-swagger-denuncias-201.png)
-
-**7. ms-polizas — vigencia de una póliza**
-
-![Swagger ms-polizas](docs/capturas/ep2/07-swagger-polizas-vigencia.png)
-
-**8. ms-talleres — taller asignado a una denuncia (201)**
-
-![Swagger ms-talleres](docs/capturas/ep2/08-swagger-talleres-asignacion.png)
-
-### Datos en MySQL
-
-**9. Usuarios con su rol**
-
-![SQL usuarios](docs/capturas/ep2/09-sql-usuarios-roles.png)
-
-**10. Pólizas con sus coberturas**
-
-![SQL polizas](docs/capturas/ep2/10-sql-polizas-coberturas.png)
-
-**11. Talleres con sus asignaciones**
-
-![SQL talleres](docs/capturas/ep2/11-sql-talleres-asignaciones.png)
-
-**12. Denuncias con estado, taller y fotografías**
-
-![SQL denuncias](docs/capturas/ep2/12-sql-denuncias-estados.png)
-
-### Postman
-
-**13. Collection Runner — flujo completo de ms-denuncias aprobado**
-
-![Postman runner](docs/capturas/ep2/13-postman-runner-denuncias.png)
-
-> Las evidencias de la versión 1 de ms-denuncias (Swagger, Postman y Docker) están en [`docs/capturas/`](docs/capturas/).
-
----
 
 ## 🩺 Solución de problemas
 
@@ -508,17 +441,6 @@ Capturas tomadas con los 4 microservicios corriendo en local.
 
 ---
 
-## ☁️ Próxima etapa: AWS (EP3)
-
-En la tercera experiencia se integrarán **funciones serverless en AWS** y los microservicios se desplegarán en la nube. Según el diseño de la EP1:
-
-| Hoy (EP2, local y manual) | EP3 (AWS) |
-|---|---|
-| Postman llama directo a cada puerto | **Amazon API Gateway** como única entrada; los microservicios no se exponen directamente |
-| El ADMIN ejecuta desde Postman la validación de póliza y la asignación de taller | **Amazon SQS** encola las denuncias nuevas y una **AWS Lambda** las procesa sola (con cola de errores DLQ) |
-| MySQL y microservicios se encienden a mano | Despliegue en la nube; se espera que quede automatizado |
-
-Por eso los endpoints `GET /polizas/{numero}/vigencia`, `POST /asignaciones` y `PATCH /denuncias/{folio}/resultado` ya existen: son los que llamará la Lambda.
 
 ---
 
