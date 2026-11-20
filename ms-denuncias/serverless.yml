@@ -1,0 +1,31 @@
+# desplegar ms-denuncias como funcion lambda detras de un http api gateway
+# usar aws lambda web adapter para correr spring boot sin cambiar el codigo java
+service: siniestrofacil-ms-denuncias
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: java25
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  memorySize: 2048
+  timeout: 29
+  # usar labrole porque aws academy no permite crear roles nuevos
+  iam:
+    role: arn:aws:iam::${aws:accountId}:role/LabRole
+  environment:
+    AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+    AWS_LWA_PORT: '8081'
+    SPRING_PROFILES_ACTIVE: aws
+
+# usar el zip armado por el pipeline con run.sh y app.jar
+package:
+  artifact: target/ms-denuncias-lambda.zip
+
+functions:
+  api:
+    handler: run.sh
+    layers:
+      - arn:aws:lambda:${aws:region}:753240598075:layer:LambdaAdapterLayerX86:27
+    events:
+      - httpApi: '*'

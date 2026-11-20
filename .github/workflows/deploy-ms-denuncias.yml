@@ -1,0 +1,90 @@
+name: Pipeline CI/CD - ms-denuncias
+
+# ejecutar con cada push a main que cambie ms-denuncias o este archivo
+# permitir tambien la ejecucion manual desde la pestana actions
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ms-denuncias/**'
+      - '.github/workflows/deploy-ms-denuncias.yml'
+  workflow_dispatch:
+
+# correr los comandos dentro de la carpeta del microservicio porque el repo es monorepo
+defaults:
+  run:
+    working-directory: ms-denuncias
+
+jobs:
+  ci-build-and-test:
+    name: 1. Integracion Continua (Build, Test y Artefacto)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 25 (Amazon Corretto)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '25'
+          cache: 'maven'
+          cache-dependency-path: ms-denuncias/pom.xml
+
+      - name: Ejecutar pruebas unitarias (JUnit)
+        run: |
+          chmod +x mvnw
+          ./mvnw -B test
+
+      - name: Empaquetar aplicacion (.jar)
+        run: ./mvnw -B package -DskipTests
+
+      # armar el zip que espera la lambda con run.sh ejecutable y app.jar en la raiz
+      - name: Armar paquete Lambda (.zip)
+        run: |
+          mkdir -p target/lambda
+          cp target/ms-denuncias-*.jar target/lambda/app.jar
+          cp run.sh target/lambda/run.sh
+          chmod +x target/lambda/run.sh
+          cd target/lambda && zip -r ../ms-denuncias-lambda.zip .
+
+      - name: Guardar artefacto compilado en GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: ms-denuncias-lambda
+          path: ms-denuncias/target/ms-denuncias-lambda.zip
+
+  # desplegar solo si el job de integracion continua termino en verde
+  cd-deploy-aws:
+    name: 2. Despliegue Continuo a AWS
+    needs: ci-build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: Descargar artefacto generado en el paso anterior
+        uses: actions/download-artifact@v4
+        with:
+          name: ms-denuncias-lambda
+          path: ms-denuncias/target
+
+      # leer las credenciales temporales de aws academy desde los secrets del repositorio
+      - name: Configurar credenciales temporales de AWS Academy
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Configurar Node.js para Serverless Framework
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Desplegar a AWS Cloud (Serverless)
+        run: npx serverless@3.38.0 deploy --stage dev
+
+      - name: Mostrar URL del endpoint desplegado
+        run: npx serverless@3.38.0 info --stage dev
