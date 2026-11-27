@@ -1,4 +1,4 @@
-# 🚗 SiniestroFácil — Microservicios (EP2)
+# 🚗 SiniestroFácil — Microservicios cloud-native (EP3)
 
 ![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot)
@@ -8,6 +8,12 @@
 ![Postman](https://img.shields.io/badge/Postman-Pruebas-FF6C37?logo=postman)
 ![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?logo=mysql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-MySQL-2496ED?logo=docker&logoColor=white)
+![Docker Swarm](https://img.shields.io/badge/Docker-Swarm-2496ED?logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
+![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-FF9900?logo=awslambda&logoColor=white)
+![Amazon SQS](https://img.shields.io/badge/AWS-SQS-FF4F8B?logo=amazonsqs&logoColor=white)
+![API Gateway](https://img.shields.io/badge/AWS-API%20Gateway-FF4F8B?logo=amazonapigateway&logoColor=white)
+![Serverless](https://img.shields.io/badge/Serverless-Framework%203-FD5750?logo=serverless&logoColor=white)
 
 **SiniestroFácil** es una plataforma para que los asegurados **denuncien siniestros automotrices**. El asegurado registra la denuncia y recibe de inmediato un **folio de recepción**. Después, en un proceso independiente, se **valida la póliza** y, si está vigente, se **asigna un taller en convenio**, que luego confirma la recepción del vehículo.
 
