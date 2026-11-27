@@ -1,0 +1,141 @@
+# stack de SiniestroFacil para Docker Swarm
+# desplegar con el script 03-desplegar-stack.ps1 o con
+#   docker stack deploy -c swarm/docker-stack.yml siniestrofacil
+# swarm no construye imagenes, por eso antes se ejecuta 02-construir-imagenes.ps1
+
+# configuracion comun de los cuatro microservicios
+x-microservicio: &microservicio
+  networks:
+    - red
+  secrets:
+    - source: jwt_secret
+      target: JWT_SECRET
+  environment: &env-comun
+    DB_USER: sfuser
+    DB_PASSWORD: sfpass
+    # leer el secreto de /run/secrets como propiedad JWT_SECRET de spring
+    SPRING_CONFIG_IMPORT: optional:configtree:/run/secrets/
+    # limitar la memoria de la jvm al limite del contenedor
+    JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+  deploy: &deploy-comun
+    replicas: 1
+    # reiniciar la replica si falla por ejemplo mientras mysql aun no esta listo
+    restart_policy:
+      condition: on-failure
+      delay: 10s
+      max_attempts: 10
+      window: 60s
+    # actualizar de a una replica levantando la nueva antes de bajar la antigua
+    update_config:
+      parallelism: 1
+      delay: 10s
+      order: start-first
+      failure_action: rollback
+    rollback_config:
+      parallelism: 1
+      order: start-first
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 512M
+      reservations:
+        memory: 256M
+
+services:
+  mysql:
+    image: mysql-siniestrofacil
+    networks:
+      - red
+    ports:
+      - "3306:3306"
+    volumes:
+      - datos-mysql:/var/lib/mysql
+    # crear las bases de los otros microservicios la primera vez que arranca mysql
+    configs:
+      - source: sql-polizas
+        target: /docker-entrypoint-initdb.d/02-polizas.sql
+      - source: sql-talleres
+        target: /docker-entrypoint-initdb.d/03-talleres.sql
+      - source: sql-usuarios
+        target: /docker-entrypoint-initdb.d/04-usuarios.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    deploy:
+      replicas: 1
+      # dejar la base siempre en el manager porque el volumen es local a ese nodo
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 1G
+
+  ms-usuarios:
+    <<: *microservicio
+    image: ms-usuarios
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *env-comun
+      DB_URL: jdbc:mysql://mysql:3306/siniestrofacil_usuarios
+    deploy:
+      <<: *deploy-comun
+      replicas: 2
+
+  ms-denuncias:
+    <<: *microservicio
+    image: ms-denuncias
+    ports:
+      - "8081:8081"
+    environment:
+      <<: *env-comun
+      DB_URL: jdbc:mysql://mysql:3306/siniestrofacil
+    deploy:
+      <<: *deploy-comun
+      replicas: 2
+
+  ms-polizas:
+    <<: *microservicio
+    image: ms-polizas
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *env-comun
+      DB_URL: jdbc:mysql://mysql:3306/siniestrofacil_polizas
+
+  ms-talleres:
+    <<: *microservicio
+    image: ms-talleres
+    ports:
+      - "8083:8083"
+    environment:
+      <<: *env-comun
+      DB_URL: jdbc:mysql://mysql:3306/siniestrofacil_talleres
+
+# red overlay que conecta los servicios aunque esten en nodos distintos
+networks:
+  red:
+    driver: overlay
+    attachable: true
+
+volumes:
+  datos-mysql:
+
+configs:
+  sql-polizas:
+    file: ../ms-polizas/docker/create.sql
+  sql-talleres:
+    file: ../ms-talleres/docker/create.sql
+  sql-usuarios:
+    file: ../ms-usuarios/docker/create.sql
+
+# clave compartida para firmar y validar los jwt, la crea 01-iniciar-swarm.ps1
+secrets:
+  jwt_secret:
+    external: true

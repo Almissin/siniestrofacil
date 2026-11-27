@@ -46,11 +46,12 @@ El sistema está formado por **4 microservicios Spring Boot**, cada uno con su *
 12. [Paso 6 — Verificar en Swagger](#paso-6--verificar-en-swagger)
 13. [Paso 7 — Verificar los datos en MySQL](#paso-7--verificar-los-datos-en-mysql)
 14. [Paso 8 — Pruebas con Postman](#paso-8--pruebas-con-postman)
-15. [Apagar todo](#-apagar-todo)
-16. [Evidencias](#-evidencias)
-17. [Solución de problemas](#-solución-de-problemas)
-18. [Próxima etapa: AWS (EP3)](#️-próxima-etapa-aws-ep3)
-19. [Equipo](#-equipo)
+15. [Docker Swarm (EP3)](#-docker-swarm-ep3)
+16. [Apagar todo](#-apagar-todo)
+17. [Evidencias](#-evidencias)
+18. [Solución de problemas](#-solución-de-problemas)
+19. [Próxima etapa: AWS (EP3)](#️-próxima-etapa-aws-ep3)
+20. [Equipo](#-equipo)
 
 ---
 
@@ -400,6 +401,88 @@ La **carpeta 4 de ms-denuncias** recorre el flujo completo del caso, simulando l
 2. POL-002 está **vencida** → la denuncia queda `RECHAZADA` (no continúa a la asignación).
 3. POL-001 está **vigente** → ms-talleres asigna taller → `TALLER_ASIGNADO`.
 4. El taller ve sus denuncias asignadas y confirma la recepción → `VEHICULO_RECIBIDO`.
+
+---
+
+## 🐳 Docker Swarm (EP3)
+
+El stack `swarm/docker-stack.yml` despliega MySQL y los cuatro microservicios como **servicios de Swarm**, con réplicas, balanceo de carga, reinicio automático y actualizaciones sin corte. La demo corre en **un solo equipo**, que cumple los roles de manager y worker.
+
+### Archivos
+
+| Archivo | Para qué sirve |
+| --- | --- |
+| `swarm/docker-stack.yml` | Definición del stack: servicios, réplicas, red overlay, secreto JWT, límites de recursos |
+| `swarm/01-iniciar-swarm.ps1` | Ejecuta `docker swarm init` y crea el secreto `jwt_secret` |
+| `swarm/02-construir-imagenes.ps1` | Compila los 4 `.jar` y construye las imágenes con `docker compose build` |
+| `swarm/03-desplegar-stack.ps1` | Baja el `docker compose` local y ejecuta `docker stack deploy` |
+| `swarm/04-escalar.ps1` | Cambia las réplicas de un microservicio |
+| `swarm/05-eliminar-stack.ps1` | Elimina el stack y, opcionalmente, sale del Swarm |
+| `swarm/agregar-nodo.md` | Cómo sumar nodos manager y worker, y qué puertos abrir |
+
+### Desplegar
+
+Con Docker Desktop encendido, desde la raíz del repositorio:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File swarm\01-iniciar-swarm.ps1
+powershell -ExecutionPolicy Bypass -File swarm\02-construir-imagenes.ps1
+powershell -ExecutionPolicy Bypass -File swarm\03-desplegar-stack.ps1
+```
+
+Los microservicios tardan 1 a 2 minutos en quedar listos. Mientras MySQL arranca, Swarm reinicia las réplicas que fallan al conectarse a la base, hasta que quedan arriba. Para revisar:
+
+```powershell
+docker stack services siniestrofacil        # REPLICAS debe mostrar 2/2 o 1/1
+docker service ps siniestrofacil_ms-denuncias
+docker service logs -f siniestrofacil_ms-denuncias
+```
+
+Los endpoints quedan en los mismos puertos de siempre, con Swagger en `http://localhost:8080` a `8083`. Swarm reparte cada petición entre las réplicas del servicio usando su *routing mesh*.
+
+### Escalar
+
+```powershell
+powershell -ExecutionPolicy Bypass -File swarm\04-escalar.ps1 -Servicio ms-denuncias -Replicas 4
+powershell -ExecutionPolicy Bypass -File swarm\04-escalar.ps1 -Servicio ms-denuncias -Replicas 2
+```
+
+Es lo mismo que `docker service scale siniestrofacil_ms-denuncias=4`.
+
+### Agregar nodos
+
+```powershell
+docker swarm join-token worker    # comando para sumar un worker
+docker swarm join-token manager   # comando para sumar un manager
+docker node ls                    # nodos del cluster
+```
+
+El detalle de puertos, registro de imágenes y cómo retirar un nodo está en [`swarm/agregar-nodo.md`](swarm/agregar-nodo.md).
+
+### Decisiones técnicas
+
+| Decisión | Por qué |
+| --- | --- |
+| 2 réplicas de `ms-usuarios` y `ms-denuncias`, 1 de `ms-polizas` y `ms-talleres` | Login y denuncias son la puerta de entrada y el flujo con más tráfico. Si cae una réplica, la otra sigue atendiendo |
+| MySQL con 1 réplica fija en el manager (`node.role == manager`) | El volumen `datos-mysql` es local a ese nodo. Una base de datos no se escala con réplicas sin replicación propia |
+| Red `overlay` | Conecta los servicios por nombre, por ejemplo `mysql:3306`, aunque estén en nodos distintos |
+| `restart_policy: on-failure` con 10 intentos | Swarm ignora `depends_on`. Si un microservicio arranca antes que MySQL, falla y Swarm lo reintenta |
+| `update_config` con `parallelism: 1` y `order: start-first` | Actualiza de a una réplica y levanta la nueva antes de bajar la antigua, sin corte de servicio |
+| `failure_action: rollback` | Si la nueva versión falla al arrancar, Swarm vuelve sola a la anterior |
+| Límites de 512 MB y 1 CPU por réplica, con `MaxRAMPercentage=75` | Una réplica con fuga de memoria no puede tumbar al resto, y la JVM respeta el límite del contenedor |
+| La clave JWT como **Docker secret** | No queda en el YAML ni en variables de entorno. Se monta en `/run/secrets/JWT_SECRET` y Spring la lee con `configtree` |
+| Scripts de MySQL como **Docker configs** | Swarm distribuye los `create.sql` a cualquier nodo, sin depender de rutas del equipo |
+
+**Pendiente si el clúster crece:** subir las imágenes a un registro, mover también las credenciales de MySQL a secretos y agregar `HEALTHCHECK` con Spring Actuator para que Swarm sepa cuándo una réplica está lista y no solo encendida.
+
+### Apagar el stack
+
+```powershell
+powershell -ExecutionPolicy Bypass -File swarm\05-eliminar-stack.ps1                  # quita el stack
+powershell -ExecutionPolicy Bypass -File swarm\05-eliminar-stack.ps1 -SalirDelSwarm   # y además deja el Swarm
+```
+
+Los datos quedan en el volumen `siniestrofacil_datos-mysql`.
 
 ---
 
