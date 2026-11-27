@@ -97,5 +97,14 @@ jobs:
       - name: Desplegar a AWS Cloud (Serverless)
         run: npx serverless@3.38.0 deploy --stage dev
 
+      # reactivar el desencadenador sqs porque aws academy lo desactiva al cerrar la sesion del lab
+      - name: Activar desencadenador SQS de procesarDenuncia
+        run: |
+          UUID=$(aws lambda list-event-source-mappings \
+            --function-name siniestrofacil-ms-denuncias-dev-procesarDenuncia \
+            --query 'EventSourceMappings[0].UUID' --output text)
+          aws lambda update-event-source-mapping --uuid "$UUID" --enabled \
+            --query '{estado: State, cola: EventSourceArn}' --output table
+
       - name: Mostrar URL del endpoint desplegado
         run: npx serverless@3.38.0 info --stage dev
