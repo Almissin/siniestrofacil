@@ -1,0 +1,14 @@
+# excluir del contexto de construccion todo lo que no se necesita para compilar
+target/
+.idea/
+.vscode/
+*.iml
+docker/
+Dockerfile*
+.dockerignore
+.git*
+README.md
+HELP.md
+mvnw.cmd
+run.sh
+serverless.yml

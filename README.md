@@ -408,13 +408,29 @@ La **carpeta 4 de ms-denuncias** recorre el flujo completo del caso, simulando l
 
 El stack `swarm/docker-stack.yml` despliega MySQL y los cuatro microservicios como **servicios de Swarm**, con réplicas, balanceo de carga, reinicio automático y actualizaciones sin corte. La demo corre en **un solo equipo**, que cumple los roles de manager y worker.
 
+### Imágenes Docker optimizadas
+
+Cada microservicio tiene un `Dockerfile` de **dos etapas**. El antiguo `DockerfileJar` queda solo como referencia.
+
+| Práctica | Cómo se aplica |
+| --- | --- |
+| Construcción multi-stage | La etapa 1 compila con `eclipse-temurin:25-jdk-alpine`. La imagen final solo lleva el `.jar` sobre `eclipse-temurin:25-jre-alpine`, sin JDK, Maven ni código fuente |
+| Caché de dependencias | Copia primero `pom.xml` y ejecuta `dependency:go-offline`. Si solo cambia el código, Docker reutiliza esa capa y no vuelve a descargar las dependencias |
+| Imagen base liviana | Alpine y JRE en vez de JDK sobre Ubuntu |
+| Usuario sin privilegios | La app corre como el usuario `app`, no como `root` |
+| `HEALTHCHECK` | Consulta `/v3/api-docs` cada 30 s, con 90 s de gracia al arrancar |
+| Memoria | `-XX:MaxRAMPercentage=75`, así la JVM respeta el límite del contenedor |
+| `.dockerignore` | Excluye `target/`, la configuración del IDE y los archivos de AWS del contexto de construcción |
+
+Para construir una sola imagen, desde su carpeta: `docker build -t ms-denuncias .`
+
 ### Archivos
 
 | Archivo | Para qué sirve |
 | --- | --- |
 | `swarm/docker-stack.yml` | Definición del stack: servicios, réplicas, red overlay, secreto JWT, límites de recursos |
 | `swarm/01-iniciar-swarm.ps1` | Ejecuta `docker swarm init` y crea el secreto `jwt_secret` |
-| `swarm/02-construir-imagenes.ps1` | Compila los 4 `.jar` y construye las imágenes con `docker compose build` |
+| `swarm/02-construir-imagenes.ps1` | Construye las imágenes con `docker compose build`. Cada `Dockerfile` compila su `.jar` adentro |
 | `swarm/03-desplegar-stack.ps1` | Baja el `docker compose` local y ejecuta `docker stack deploy` |
 | `swarm/04-escalar.ps1` | Cambia las réplicas de un microservicio |
 | `swarm/05-eliminar-stack.ps1` | Elimina el stack y, opcionalmente, sale del Swarm |
@@ -472,8 +488,9 @@ El detalle de puertos, registro de imágenes y cómo retirar un nodo está en [`
 | Límites de 512 MB y 1 CPU por réplica, con `MaxRAMPercentage=75` | Una réplica con fuga de memoria no puede tumbar al resto, y la JVM respeta el límite del contenedor |
 | La clave JWT como **Docker secret** | No queda en el YAML ni en variables de entorno. Se monta en `/run/secrets/JWT_SECRET` y Spring la lee con `configtree` |
 | Scripts de MySQL como **Docker configs** | Swarm distribuye los `create.sql` a cualquier nodo, sin depender de rutas del equipo |
+| `HEALTHCHECK` en cada imagen | Swarm sabe cuándo una réplica responde de verdad. En una actualización espera a que la nueva esté *healthy* antes de bajar la antigua, y reinicia las que dejan de responder |
 
-**Pendiente si el clúster crece:** subir las imágenes a un registro, mover también las credenciales de MySQL a secretos y agregar `HEALTHCHECK` con Spring Actuator para que Swarm sepa cuándo una réplica está lista y no solo encendida.
+**Pendiente si el clúster crece:** subir las imágenes a un registro y mover también las credenciales de MySQL a secretos.
 
 ### Apagar el stack
 

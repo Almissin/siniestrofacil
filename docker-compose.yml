@@ -1,6 +1,6 @@
 # levanta MySQL y los 4 microservicios de SiniestroFacil con un solo comando:
 #   docker compose up -d --build
-# antes hay que compilar los .jar de cada microservicio (mvnw.cmd package -DskipTests)
+# los Dockerfile compilan el .jar dentro de Docker en dos etapas, no hace falta compilar antes
 # "restart: unless-stopped" hace que los contenedores arranquen solos al abrir Docker Desktop
 
 name: siniestrofacil
@@ -44,7 +44,7 @@ services:
     <<: *microservicio
     build:
       context: ./ms-usuarios
-      dockerfile: DockerfileJar
+      dockerfile: Dockerfile
     image: ms-usuarios
     container_name: ms-usuarios
     ports:
@@ -57,7 +57,7 @@ services:
     <<: *microservicio
     build:
       context: ./ms-denuncias
-      dockerfile: DockerfileJar
+      dockerfile: Dockerfile
     image: ms-denuncias
     container_name: ms-denuncias
     ports:
@@ -70,7 +70,7 @@ services:
     <<: *microservicio
     build:
       context: ./ms-polizas
-      dockerfile: DockerfileJar
+      dockerfile: Dockerfile
     image: ms-polizas
     container_name: ms-polizas
     ports:
@@ -83,7 +83,7 @@ services:
     <<: *microservicio
     build:
       context: ./ms-talleres
-      dockerfile: DockerfileJar
+      dockerfile: Dockerfile
     image: ms-talleres
     container_name: ms-talleres
     ports:
