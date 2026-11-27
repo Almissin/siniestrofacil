@@ -1,4 +1,4 @@
-# 🚗 SiniestroFácil — Microservicios (EP2)
+# 🚗 SiniestroFácil — Microservicios, Docker Swarm y Serverless (EP3)
 
 ![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot)
@@ -164,6 +164,10 @@ siniestrofacil/
 │   ├── ms-denuncias.postman_collection.json
 │   ├── ms-polizas.postman_collection.json
 │   └── ms-talleres.postman_collection.json
+├── swarm/                         ← stack y scripts de Docker Swarm (EP3)
+├── lambda-denuncias/              ← autorizador y procesarDenuncia (EP3, ver su README)
+├── doc/
+│   └── uso-ia.md                  ← justificación grupal del uso de IA (EP3)
 └── docs/capturas/                 ← evidencias
 ```
 
@@ -576,6 +580,8 @@ La parte en la nube implementa la decisión central del proyecto: **el ingreso d
 
 ### Desplegar
 
+> Detalle de las funciones, reglas de negocio y pruebas: [`lambda-denuncias/README.md`](lambda-denuncias/README.md).
+
 No se despliega a mano. Cualquier push a `main` que toque `ms-denuncias/` o `lambda-denuncias/` ejecuta `.github/workflows/deploy-ms-denuncias.yml`:
 
 1. **Integración continua:** pruebas de ms-denuncias, `.jar` y `.zip` para la Lambda, pruebas y `.jar` de `lambda-denuncias`.
@@ -618,6 +624,8 @@ Requiere los secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` y `AWS_SESSION
 |---|
 | Roberto Bustamante |
 | Alex Messin De La Cruz |
+
+Justificación del uso de IA por integrante: [`doc/uso-ia.md`](doc/uso-ia.md)
 
 **DUOC UC — Escuela de Informática y Telecomunicaciones**
 Asignatura JVY0101 · 2026
