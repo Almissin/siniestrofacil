@@ -1,12 +1,13 @@
 name: Pipeline CI/CD - ms-denuncias
 
-# ejecutar con cada push a main que cambie ms-denuncias o este archivo
+# ejecutar con cada push a main que cambie ms-denuncias las lambdas o este archivo
 # permitir tambien la ejecucion manual desde la pestana actions
 on:
   push:
     branches: [ main ]
     paths:
       - 'ms-denuncias/**'
+      - 'lambda-denuncias/**'
       - '.github/workflows/deploy-ms-denuncias.yml'
   workflow_dispatch:
 
@@ -48,11 +49,21 @@ jobs:
           chmod +x target/lambda/run.sh
           cd target/lambda && zip -r ../ms-denuncias-lambda.zip .
 
-      - name: Guardar artefacto compilado en GitHub
+      # compilar y probar las lambdas consumidora y autorizadora
+      - name: Ejecutar pruebas y empaquetar lambdas (procesarDenuncia y autorizador)
+        working-directory: lambda-denuncias
+        run: mvn -B package
+
+      - name: Copiar el jar de las lambdas junto al de ms-denuncias
+        run: cp ../lambda-denuncias/target/lambda-denuncias.jar target/lambda-denuncias.jar
+
+      - name: Guardar artefactos compilados en GitHub
         uses: actions/upload-artifact@v4
         with:
           name: ms-denuncias-lambda
-          path: ms-denuncias/target/ms-denuncias-lambda.zip
+          path: |
+            ms-denuncias/target/ms-denuncias-lambda.zip
+            ms-denuncias/target/lambda-denuncias.jar
 
   # desplegar solo si el job de integracion continua termino en verde
   cd-deploy-aws:

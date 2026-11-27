@@ -50,7 +50,7 @@ El sistema está formado por **4 microservicios Spring Boot**, cada uno con su *
 16. [Apagar todo](#-apagar-todo)
 17. [Evidencias](#-evidencias)
 18. [Solución de problemas](#-solución-de-problemas)
-19. [Próxima etapa: AWS (EP3)](#️-próxima-etapa-aws-ep3)
+19. [Serverless en AWS (EP3)](#️-serverless-en-aws-ep3)
 20. [Equipo](#-equipo)
 
 ---
@@ -524,6 +524,74 @@ Los datos **no se pierden**: quedan guardados en el contenedor para la próxima 
 
 ---
 
+
+---
+
+## ☁️ Serverless en AWS (EP3)
+
+La parte en la nube implementa la decisión central del proyecto: **el ingreso de la denuncia es síncrono y entrega el folio al instante, y la validación de póliza y la asignación de taller ocurren después, de forma asíncrona**, a través de una cola.
+
+```
+ Cliente ──► API Gateway (HTTP API) ──► Lambda autorizador ── JWT inválido ──► 401 / 403
+              throttling 10 req/s          │ JWT válido
+                                           ▼
+                                  ms-denuncias (Lambda) ── 201 + folio RECIBIDA ──► Cliente
+                                           │ publica
+                                           ▼
+                                SQS siniestrofacil-denuncias  (espera 10 s)
+                                           │ falla 3 veces ──► SQS siniestrofacil-denuncias-errores
+                                           ▼
+                                Lambda procesarDenuncia
+                                  valida póliza y asigna taller
+                                           │ PATCH /denuncias/{folio}/resultado
+                                           ▼
+                                ms-denuncias ── estado TALLER_ASIGNADO o RECHAZADA
+```
+
+| Componente | Dónde está | Qué hace |
+| --- | --- | --- |
+| HTTP API Gateway | `ms-denuncias/serverless.yml` | Expone solo `/denuncias` y Swagger, exige JWT y limita a 10 peticiones por segundo |
+| `autorizador` | `lambda-denuncias/.../AutorizadorHandler.java` | Valida firma, emisor y vencimiento del JWT antes de llegar al backend |
+| `api` | `ms-denuncias` + Lambda Web Adapter | El mismo Spring Boot de siempre. Registra la denuncia y publica el mensaje en SQS (`PublicadorDenuncias`) |
+| `siniestrofacil-denuncias` | Cola SQS | Desacopla el ingreso del procesamiento. Entrega cada mensaje 10 s después, para que se vea el estado `RECIBIDA` |
+| `siniestrofacil-denuncias-errores` | Cola SQS (DLQ) | Guarda los mensajes que fallan 3 veces |
+| `procesarDenuncia` | `lambda-denuncias/.../ProcesarDenunciaHandler.java` | Valida la póliza (`ValidadorPoliza`) y guarda el resultado en ms-denuncias |
+
+### Desplegar
+
+No se despliega a mano. Cualquier push a `main` que toque `ms-denuncias/` o `lambda-denuncias/` ejecuta `.github/workflows/deploy-ms-denuncias.yml`:
+
+1. **Integración continua:** pruebas de ms-denuncias, `.jar` y `.zip` para la Lambda, pruebas y `.jar` de `lambda-denuncias`.
+2. **Despliegue continuo:** `serverless deploy` crea o actualiza en CloudFormation el API Gateway, el autorizador, las tres Lambdas y las dos colas.
+
+Requiere los secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` y `AWS_SESSION_TOKEN` del Learner Lab. Hay que actualizarlos cada vez que se reinicia el lab.
+
+### Probar
+
+1. Obtén un token del asegurado en ms-usuarios, el que corre en Docker local o Swarm. La clave JWT es la misma, así que el token sirve en AWS:
+   `POST http://localhost:8080/auth/login` con `{"email":"asegurado@siniestrofacil.cl","password":"Asegurado123!"}`
+2. Registra una denuncia en AWS con ese token:
+   `POST https://<api-id>.execute-api.us-east-1.amazonaws.com/denuncias`
+   ```json
+   {"patente":"ABCD12","numeroPoliza":"POL-001","fechaSiniestro":"2026-11-20","descripcion":"choque por alcance"}
+   ```
+   Responde **201** con el folio y estado `RECIBIDA`.
+3. Espera unos 15 segundos y consulta `GET .../denuncias/{folio}`. El estado pasa a **`TALLER_ASIGNADO`** con *Taller Central*.
+4. Con `POL-002` o `POL-003` la denuncia termina **`RECHAZADA`** con el motivo.
+5. Sin token, el API Gateway responde **401** y la petición nunca llega a ms-denuncias.
+6. Los logs están en CloudWatch: `/aws/lambda/siniestrofacil-ms-denuncias-dev-procesarDenuncia` y `-autorizador`.
+
+| Póliza | Patente | Resultado esperado |
+| --- | --- | --- |
+| POL-001 | ABCD12 | `TALLER_ASIGNADO` |
+| POL-002 | AB1234 | `RECHAZADA`, no estaba vigente |
+| POL-003 | BCDF34 | `RECHAZADA`, póliza anulada |
+
+### Decisiones y limitaciones
+
+- **Las reglas de pólizas van dentro de la Lambda.** ms-polizas y ms-talleres corren en Docker local, y una Lambda en AWS no puede alcanzarlos. `ValidadorPoliza` replica las pólizas de demostración. El siguiente paso sería desplegar esos microservicios en la nube y que la Lambda los consulte.
+- **ms-denuncias usa H2 en memoria en AWS.** Los datos se pierden cuando la Lambda se reinicia. Para la demo se trabaja con peticiones en secuencia, para que las atienda la misma instancia. En producción se usaría Amazon RDS.
+- **Doble validación del JWT.** El autorizador filtra en el borde y ms-denuncias vuelve a validar el rol de cada endpoint. Si se salta una capa, la otra protege.
 
 ---
 

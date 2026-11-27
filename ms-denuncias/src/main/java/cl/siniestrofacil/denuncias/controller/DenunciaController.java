@@ -3,6 +3,7 @@ package cl.siniestrofacil.denuncias.controller;
 import cl.siniestrofacil.denuncias.dto.DenunciaRequest;
 import cl.siniestrofacil.denuncias.dto.DenunciaResponse;
 import cl.siniestrofacil.denuncias.dto.ResultadoRequest;
+import cl.siniestrofacil.denuncias.mensajeria.PublicadorDenuncias;
 import cl.siniestrofacil.denuncias.model.EstadoDenuncia;
 import cl.siniestrofacil.denuncias.security.UsuarioAutenticado;
 import cl.siniestrofacil.denuncias.service.DenunciaService;
@@ -29,6 +30,7 @@ import java.util.List;
 public class DenunciaController {
 
     private final DenunciaService denunciaService;
+    private final PublicadorDenuncias publicadorDenuncias;
 
     @PostMapping
     @PreAuthorize("hasRole('ASEGURADO')")
@@ -37,6 +39,8 @@ public class DenunciaController {
     public ResponseEntity<DenunciaResponse> registrar(@Valid @RequestBody DenunciaRequest request,
                                                       @Parameter(hidden = true) @AuthenticationPrincipal UsuarioAutenticado usuario) {
         DenunciaResponse creada = denunciaService.registrar(request, usuario);
+        // publicar en la cola despues de guardar para que la lambda la procese en segundo plano
+        publicadorDenuncias.publicar(creada);
         URI ubicacion = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{folio}").buildAndExpand(creada.folio()).toUri();
         return ResponseEntity.created(ubicacion).body(creada);

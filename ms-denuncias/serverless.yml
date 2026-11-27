@@ -1,31 +1,134 @@
-# desplegar ms-denuncias como funcion lambda detras de un http api gateway
-# usar aws lambda web adapter para correr spring boot sin cambiar el codigo java
+# infraestructura como codigo de la parte serverless de siniestrofacil
+# crear con un solo deploy el api gateway protegido, ms-denuncias, la cola sqs y las dos lambdas
 service: siniestrofacil-ms-denuncias
 frameworkVersion: '3'
 
 provider:
   name: aws
-  runtime: java25
   region: us-east-1
   stage: ${opt:stage, 'dev'}
-  memorySize: 2048
-  timeout: 29
   # usar labrole porque aws academy no permite crear roles nuevos
   iam:
     role: arn:aws:iam::${aws:accountId}:role/LabRole
-  environment:
-    AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
-    AWS_LWA_PORT: '8081'
-    SPRING_PROFILES_ACTIVE: aws
+  httpApi:
+    authorizers:
+      # revisar el jwt en el api gateway antes de que la peticion llegue al backend
+      autorizadorJwt:
+        type: request
+        functionName: autorizador
+        enableSimpleResponses: true
+        payloadVersion: '2.0'
+        identitySource: $request.header.Authorization
+        resultTtlInSeconds: 30
 
-# usar el zip armado por el pipeline con run.sh y app.jar
+# empaquetar cada funcion con su propio artefacto armado por el pipeline
 package:
-  artifact: target/ms-denuncias-lambda.zip
+  individually: true
 
 functions:
+  # productor que recibe la denuncia entrega el folio y publica en la cola
   api:
+    runtime: java25
     handler: run.sh
+    memorySize: 2048
+    timeout: 29
+    package:
+      artifact: target/ms-denuncias-lambda.zip
     layers:
       - arn:aws:lambda:${aws:region}:753240598075:layer:LambdaAdapterLayerX86:27
+    environment:
+      AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+      AWS_LWA_PORT: '8081'
+      SPRING_PROFILES_ACTIVE: aws
+      SQS_QUEUE_URL: !Ref ColaDenuncias
     events:
-      - httpApi: '*'
+      # exigir jwt en todas las rutas de negocio
+      - httpApi:
+          method: ANY
+          path: /denuncias
+          authorizer:
+            name: autorizadorJwt
+      - httpApi:
+          method: ANY
+          path: /denuncias/{proxy+}
+          authorizer:
+            name: autorizadorJwt
+      # dejar publica solo la documentacion swagger
+      - httpApi:
+          method: GET
+          path: /v3/api-docs
+      - httpApi:
+          method: GET
+          path: /v3/api-docs/{proxy+}
+      - httpApi:
+          method: GET
+          path: /swagger-ui/{proxy+}
+
+  # autorizador lambda que valida el jwt emitido por ms-usuarios
+  autorizador:
+    runtime: java21
+    handler: cl.siniestrofacil.lambda.AutorizadorHandler::handleRequest
+    memorySize: 512
+    timeout: 10
+    package:
+      artifact: target/lambda-denuncias.jar
+
+  # consumidor que valida la poliza y asigna el taller por cada mensaje de la cola
+  procesarDenuncia:
+    runtime: java21
+    handler: cl.siniestrofacil.lambda.ProcesarDenunciaHandler::handleRequest
+    memorySize: 512
+    timeout: 30
+    package:
+      artifact: target/lambda-denuncias.jar
+    environment:
+      API_URL:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: HttpApi
+            - '.execute-api.'
+            - Ref: AWS::Region
+            - '.amazonaws.com'
+    events:
+      - sqs:
+          arn: !GetAtt ColaDenuncias.Arn
+          batchSize: 1
+          # limitar a dos consumidores simultaneos porque ms-denuncias usa h2 en memoria por instancia
+          maximumConcurrency: 2
+
+resources:
+  Resources:
+    # guardar los mensajes que fallan tres veces para revisarlos sin bloquear la cola
+    ColaDenunciasErrores:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: siniestrofacil-denuncias-errores
+        MessageRetentionPeriod: 1209600
+
+    # cola principal entre ms-denuncias y la lambda procesarDenuncia
+    ColaDenuncias:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: siniestrofacil-denuncias
+        # esperar diez segundos antes de entregar el mensaje para que se vea el estado RECIBIDA
+        DelaySeconds: 10
+        # dar tiempo de sobra a la lambda que tiene timeout de treinta segundos
+        VisibilityTimeout: 60
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt ColaDenunciasErrores.Arn
+          maxReceiveCount: 3
+
+  extensions:
+    # limitar el trafico del api gateway para proteger el backend de abusos
+    HttpApiStage:
+      Properties:
+        DefaultRouteSettings:
+          ThrottlingRateLimit: 10
+          ThrottlingBurstLimit: 20
+
+  Outputs:
+    ColaDenunciasUrl:
+      Value: !Ref ColaDenuncias
+    ColaDenunciasErroresUrl:
+      Value: !Ref ColaDenunciasErrores
